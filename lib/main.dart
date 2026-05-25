@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'core/theme/app_theme.dart';
+import 'shared/providers/nav_provider.dart';
+import 'features/market/market_page.dart';
+import 'features/portfolio/portfolio_page.dart';
+import 'features/watchlist/watchlist_page.dart';
+import 'features/goals/goals_page.dart';
+import 'features/ai_mentor/ai_mentor_page.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => NavProvider(),
+      child: const FintellApp(),
+    ),
+  );
+}
+
+class FintellApp extends StatelessWidget {
+  const FintellApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Fintell',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: const MainShell(),
+    );
+  }
+}
+
+class MainShell extends StatelessWidget {
+  const MainShell({super.key});
+
+  static const List<Widget> _pages = [
+    MarketPage(),
+    PortfolioPage(),
+    WatchlistPage(),
+    GoalsPage(),
+    AiMentorPage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final nav = context.watch<NavProvider>();
+    return Scaffold(
+      body: IndexedStack(
+        index: nav.currentIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: const _FintellBottomNav(),
+    );
+  }
+}
+
+class _FintellBottomNav extends StatelessWidget {
+  const _FintellBottomNav();
+
+  @override
+  Widget build(BuildContext context) {
+    final nav = context.watch<NavProvider>();
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+      ),
+      child: BottomNavigationBar(
+        currentIndex: nav.currentIndex,
+        onTap: nav.setIndex,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart_rounded),
+            label: 'Market',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Portfolio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bookmark_rounded),
+            label: 'Watchlist',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flag_rounded),
+            label: 'Goals',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.auto_awesome_rounded),
+            label: 'AI Mentor',
+          ),
+        ],
+      ),
+    );
+  }
+}
