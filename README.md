@@ -122,6 +122,181 @@ All data lives in `lib/core/dummy_data/app_data.dart`. Key classes:
 
 ---
 
+## Class Diagram
+
+```mermaid
+classDiagram
+    %% ── Data Models ──────────────────────────────────
+    class Stock {
+        +String ticker
+        +String name
+        +double price
+        +double changePercent
+        +double peRatio
+        +double roe
+        +String sector
+        +Color color
+    }
+
+    class OwnedStock {
+        +Stock stock
+        +int shares
+        +double avgPrice
+        +double currentValue
+        +double costBasis
+        +double gainLoss
+        +double gainLossPercent
+    }
+
+    class Goal {
+        +String title
+        +String subtitle
+        +double target
+        +double current
+        +IconData icon
+        +Color color
+        +String deadline
+        +double progress
+    }
+
+    class ChatMessage {
+        +String text
+        +bool isUser
+        +String time
+    }
+
+    class MarketIndex {
+        +String name
+        +double value
+        +double changePercent
+    }
+
+    %% ── Data Container ───────────────────────────────
+    class AppData {
+        <<static>>
+        +double virtualBalance$
+        +double totalInvested$
+        +double portfolioReturn$
+        +double portfolioReturnPercent$
+        +List~MarketIndex~ indices$
+        +List~Stock~ popularStocks$
+        +List~Stock~ watchlistTech$
+        +List~Stock~ watchlistFinance$
+        +List~Stock~ watchlistHealth$
+        +List~Goal~ goals$
+        +List~ChatMessage~ chatHistory$
+        +List~OwnedStock~ ownedStocks$
+    }
+
+    %% ── Theme ────────────────────────────────────────
+    class AppTheme {
+        <<static>>
+        +Color primary$
+        +Color primaryDark$
+        +Color primaryLight$
+        +Color background$
+        +Color surface$
+        +Color textPrimary$
+        +Color textSecondary$
+        +Color positive$
+        +Color negative$
+        +ThemeData light$
+    }
+
+    %% ── State Management ─────────────────────────────
+    class ChangeNotifier {
+        <<Flutter>>
+        +notifyListeners()
+    }
+
+    class NavProvider {
+        -int _currentIndex
+        +int currentIndex
+        +setIndex(int index)
+    }
+
+    NavProvider --|> ChangeNotifier
+
+    %% ── UI Widgets ───────────────────────────────────
+    class FintellApp {
+        <<StatelessWidget>>
+        +Widget build()
+    }
+
+    class MainShell {
+        <<StatelessWidget>>
+        +Widget build()
+    }
+
+    class MarketPage {
+        <<StatelessWidget>>
+        +Widget build()
+    }
+
+    class PortfolioPage {
+        <<StatelessWidget>>
+        +Widget build()
+    }
+
+    class WatchlistPage {
+        <<StatefulWidget>>
+        -TabController _tabController
+        +Widget build()
+        +void initState()
+        +void dispose()
+    }
+
+    class GoalsPage {
+        <<StatelessWidget>>
+        +Widget build()
+    }
+
+    class AiMentorPage {
+        <<StatefulWidget>>
+        -TextEditingController _controller
+        -ScrollController _scrollController
+        -List~ChatMessage~ _messages
+        -bool _isBotTyping
+        +void sendMessage()
+        +void scrollToBottom()
+        +Widget build()
+        +void dispose()
+    }
+
+    %% ── Model Relationships ──────────────────────────
+    OwnedStock "1" *-- "1" Stock : composes
+
+    AppData ..> Stock       : contains
+    AppData ..> OwnedStock  : contains
+    AppData ..> Goal        : contains
+    AppData ..> ChatMessage : contains
+    AppData ..> MarketIndex : contains
+
+    %% ── App Relationships ────────────────────────────
+    FintellApp *-- MainShell : hosts
+
+    MainShell ..> NavProvider   : watches
+    MainShell *-- MarketPage    : page 0
+    MainShell *-- PortfolioPage : page 1
+    MainShell *-- WatchlistPage : page 2
+    MainShell *-- GoalsPage     : page 3
+    MainShell *-- AiMentorPage  : page 4
+
+    MarketPage    ..> AppData   : reads
+    PortfolioPage ..> AppData   : reads
+    WatchlistPage ..> AppData   : reads
+    GoalsPage     ..> AppData   : reads
+    AiMentorPage  ..> AppData   : reads
+
+    MarketPage    ..> AppTheme  : styles
+    PortfolioPage ..> AppTheme  : styles
+    WatchlistPage ..> AppTheme  : styles
+    GoalsPage     ..> AppTheme  : styles
+    AiMentorPage  ..> AppTheme  : styles
+```
+
+---
+
 ## Design System
 
 | Token | Value |
