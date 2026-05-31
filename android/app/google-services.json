@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "895733104595",
+    "project_id": "fintell-b789b",
+    "storage_bucket": "fintell-b789b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895733104595:android:07afaed6bea5ef1a657926",
+        "android_client_info": {
+          "package_name": "com.fintell.fintell"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyHKt6N9__t3Z7mW6mcRTIzKOAShvkszg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
