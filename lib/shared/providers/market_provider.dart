@@ -109,6 +109,7 @@ class MarketProvider extends ChangeNotifier {
         final q = quotes[meta.symbol];
         return Stock(
           ticker: meta.symbol.replaceAll('.JK', ''),
+          symbol: meta.symbol,
           name: meta.name,
           price: q?.price ?? 0,
           changePercent: q?.changePercent ?? 0,
