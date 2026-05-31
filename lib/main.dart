@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers/nav_provider.dart';
+import 'shared/providers/auth_provider.dart';
+import 'features/auth/auth_page.dart';
 import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
 import 'features/watchlist/watchlist_page.dart';
@@ -23,8 +26,11 @@ void main() async {
     ),
   );
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => NavProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => NavProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
       child: const FintellApp(),
     ),
   );
@@ -39,7 +45,18 @@ class FintellApp extends StatelessWidget {
       title: 'Fintell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const MainShell(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData) return const MainShell();
+          return const AuthPage();
+        },
+      ),
     );
   }
 }
