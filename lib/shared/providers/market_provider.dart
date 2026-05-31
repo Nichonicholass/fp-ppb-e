@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/dummy_data/app_data.dart';
 import '../../core/services/market_service.dart';
+import '../../core/dummy_data/app_data.dart' show Stock, MarketIndex;
 
 class MarketProvider extends ChangeNotifier {
   final _service = MarketService();
@@ -24,15 +24,26 @@ class MarketProvider extends ChangeNotifier {
     _SM('NVDA', 'NVIDIA Corp.', 68.1, 91.8, 'Technology', Color(0xFF76B900)),
     _SM('META', 'Meta Platforms', 28.9, 35.4, 'Comm. Services', Color(0xFF1877F2)),
     _SM('TSLA', 'Tesla Inc.', 44.3, 21.1, 'Consumer Disc.', Color(0xFFCC0000)),
-    _SM('BRK/B', 'Berkshire Hathaway', 21.4, 15.2, 'Finance', Color(0xFF8B4513), display: 'BRK.B'),
     _SM('JPM', 'JPMorgan Chase', 11.8, 16.9, 'Finance', Color(0xFF003087)),
     _SM('JNJ', 'Johnson & Johnson', 16.3, 23.8, 'Healthcare', Color(0xFFD32F2F)),
+    _SM('V', 'Visa Inc.', 30.1, 44.7, 'Finance', Color(0xFF1A1F71)),
+    _SM('BRK-B', 'Berkshire Hathaway', 21.4, 15.2, 'Finance', Color(0xFF8B4513)),
+    _SM('NFLX', 'Netflix Inc.', 45.0, 28.5, 'Comm. Services', Color(0xFFE50914)),
+    _SM('AMD', 'Advanced Micro Devices', 35.5, 8.2, 'Technology', Color(0xFFED1C24)),
+    _SM('DIS', 'Walt Disney Co.', 32.0, 6.5, 'Comm. Services', Color(0xFF006E99)),
+    _SM('WMT', 'Walmart Inc.', 38.5, 23.1, 'Consumer Staples', Color(0xFF0071CE)),
+    _SM('PG', 'Procter & Gamble', 25.8, 31.2, 'Consumer Staples', Color(0xFF003D99)),
+    _SM('XOM', 'ExxonMobil Corp.', 14.2, 19.8, 'Energy', Color(0xFFDD0031)),
+    _SM('BABA', 'Alibaba Group', 18.5, 14.5, 'Consumer Disc.', Color(0xFFFF6A00)),
+    _SM('PYPL', 'PayPal Holdings', 15.8, 20.3, 'Finance', Color(0xFF009CDE)),
+    _SM('COIN', 'Coinbase Global', 55.2, 25.5, 'Finance', Color(0xFF0052FF)),
   ];
 
+  // Yahoo Finance index symbols
   static const _indexMeta = [
-    _IM('SPX', 'S&P 500'),
-    _IM('IXIC', 'NASDAQ'),
-    _IM('DJI', 'DOW'),
+    _IM('^GSPC', 'S&P 500'),
+    _IM('^IXIC', 'NASDAQ'),
+    _IM('^DJI', 'DOW'),
   ];
 
   MarketProvider() {
@@ -46,16 +57,16 @@ class MarketProvider extends ChangeNotifier {
 
     try {
       final allSymbols = [
-        ..._stockMeta.map((m) => m.apiSymbol),
+        ..._stockMeta.map((m) => m.symbol),
         ..._indexMeta.map((m) => m.symbol),
       ];
 
       final quotes = await _service.fetchQuotes(allSymbols);
 
       _stocks = _stockMeta.map((meta) {
-        final q = quotes[meta.apiSymbol];
+        final q = quotes[meta.symbol];
         return Stock(
-          ticker: meta.displayTicker,
+          ticker: meta.symbol,
           name: meta.name,
           price: q?.price ?? 0,
           changePercent: q?.changePercent ?? 0,
@@ -76,10 +87,6 @@ class MarketProvider extends ChangeNotifier {
       }).toList();
     } catch (e) {
       _error = e.toString();
-      if (_stocks.isEmpty) {
-        _stocks = List.from(AppData.popularStocks);
-        _indices = List.from(AppData.indices);
-      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -88,25 +95,13 @@ class MarketProvider extends ChangeNotifier {
 }
 
 class _SM {
-  final String apiSymbol;
+  final String symbol;
   final String name;
   final double peRatio;
   final double roe;
   final String sector;
   final Color color;
-  final String? display;
-
-  String get displayTicker => display ?? apiSymbol;
-
-  const _SM(
-    this.apiSymbol,
-    this.name,
-    this.peRatio,
-    this.roe,
-    this.sector,
-    this.color, {
-    this.display,
-  });
+  const _SM(this.symbol, this.name, this.peRatio, this.roe, this.sector, this.color);
 }
 
 class _IM {

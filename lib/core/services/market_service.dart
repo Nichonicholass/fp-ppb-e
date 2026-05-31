@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class QuoteData {
   final double price;
@@ -9,42 +9,67 @@ class QuoteData {
 }
 
 class MarketService {
-  String get _apiKey => dotenv.env['TWELVE_DATA_API_KEY'] ?? '';
-
   Future<Map<String, QuoteData>> fetchQuotes(List<String> symbols) async {
-    final uri = Uri.https('api.twelvedata.com', '/quote', {
-      'symbol': symbols.join(','),
-      'apikey': _apiKey,
-    });
+    debugPrint('[MarketService] fetching ${symbols.length} symbols via v8...');
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
-    if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode}');
+    // Fire all requests in parallel
+    final futures = symbols.map(_fetchOne);
+    final results = await Future.wait(futures);
+
+    final map = <String, QuoteData>{};
+    for (int i = 0; i < symbols.length; i++) {
+      if (results[i] != null) map[symbols[i]] = results[i]!;
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final result = <String, QuoteData>{};
-
-    if (symbols.length == 1) {
-      if (body['close'] != null) {
-        result[symbols.first] = _parseQuote(body);
-      }
-    } else {
-      for (final symbol in symbols) {
-        final data = body[symbol];
-        if (data is Map<String, dynamic> && data['close'] != null) {
-          result[symbol] = _parseQuote(data);
-        }
-      }
-    }
-
-    return result;
+    debugPrint('[MarketService] got ${map.length}/${symbols.length} quotes');
+    return map;
   }
 
-  QuoteData _parseQuote(Map<String, dynamic> data) {
-    return QuoteData(
-      price: double.tryParse(data['close']?.toString() ?? '') ?? 0,
-      changePercent: double.tryParse(data['percent_change']?.toString() ?? '') ?? 0,
-    );
+  Future<QuoteData?> _fetchOne(String symbol) async {
+    try {
+      // ^ in index symbols (^GSPC) must be percent-encoded
+      final encoded = Uri.encodeComponent(symbol);
+      final url =
+          'https://query1.finance.yahoo.com/v8/finance/chart/$encoded'
+          '?interval=1d&range=1d';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'Mozilla/5.0'},
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('[MarketService] $symbol → ${response.statusCode}');
+
+      if (response.statusCode != 200) return null;
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final resultList =
+          (body['chart']?['result'] as List?);
+      if (resultList == null || resultList.isEmpty) return null;
+
+      final meta = resultList[0]['meta'] as Map<String, dynamic>?;
+      if (meta == null) return null;
+
+      final price =
+          (meta['regularMarketPrice'] as num?)?.toDouble() ?? 0;
+      final changePercent =
+          (meta['regularMarketChangePercent'] as num?)?.toDouble() ??
+          _calcChange(price, meta);
+
+      return QuoteData(price: price, changePercent: changePercent);
+    } catch (e) {
+      debugPrint('[MarketService] $symbol error: $e');
+      return null;
+    }
+  }
+
+  // Fallback: compute % change from previous close if field is missing
+  double _calcChange(double price, Map<String, dynamic> meta) {
+    final prev =
+        (meta['chartPreviousClose'] as num?)?.toDouble() ??
+        (meta['previousClose'] as num?)?.toDouble() ??
+        0;
+    if (prev == 0) return 0;
+    return ((price - prev) / prev) * 100;
   }
 }

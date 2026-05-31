@@ -27,6 +27,13 @@ class MarketPage extends StatelessWidget {
                 const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()),
                 )
+              else if (market.error != null && !market.hasData)
+                SliverFillRemaining(
+                  child: _ErrorState(
+                    message: market.error,
+                    onRetry: market.fetchAll,
+                  ),
+                )
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -415,6 +422,59 @@ class _MetricChip extends StatelessWidget {
               fontSize: 9,
               color: AppTheme.textPrimary,
               fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final VoidCallback onRetry;
+  final String? message;
+  const _ErrorState({required this.onRetry, this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.textSecondary),
+          const SizedBox(height: 12),
+          Text(
+            'Failed to load market data',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(
+              'Retry',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primary,
+              ),
             ),
           ),
         ],
