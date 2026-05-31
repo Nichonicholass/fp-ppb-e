@@ -22,7 +22,7 @@ class MarketPage extends StatelessWidget {
               SliverToBoxAdapter(child: _buildHeader(context)),
               SliverToBoxAdapter(child: _buildMarketOverview(market.indices)),
               SliverToBoxAdapter(child: _buildSearchBar()),
-              SliverToBoxAdapter(child: _buildSectionTitle('Popular Stocks')),
+              SliverToBoxAdapter(child: _buildSectionHeader(context, market)),
               if (market.isLoading && !market.hasData)
                 const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()),
@@ -37,7 +37,10 @@ class MarketPage extends StatelessWidget {
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (ctx, i) => _StockListTile(stock: market.stocks[i]),
+                    (ctx, i) => _StockListTile(
+                      stock: market.stocks[i],
+                      isIDX: market.isIDX,
+                    ),
                     childCount: market.stocks.length,
                   ),
                 ),
@@ -220,12 +223,102 @@ class MarketPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionHeader(BuildContext context, MarketProvider market) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Text(
-        title,
-        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Popular Stocks',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          _MarketToggle(
+            selected: market.mode,
+            onChanged: (mode) => context.read<MarketProvider>().switchMode(mode),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketToggle extends StatelessWidget {
+  final MarketMode selected;
+  final ValueChanged<MarketMode> onChanged;
+
+  const _MarketToggle({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ToggleTab(
+            label: 'Global',
+            isSelected: selected == MarketMode.luarNegeri,
+            onTap: () => onChanged(MarketMode.luarNegeri),
+            isFirst: true,
+          ),
+          _ToggleTab(
+            label: 'IDX',
+            isSelected: selected == MarketMode.dalamNegeri,
+            onTap: () => onChanged(MarketMode.dalamNegeri),
+            isFirst: false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleTab extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isFirst;
+
+  const _ToggleTab({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.isFirst,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.horizontal(
+            left: isFirst ? const Radius.circular(10) : Radius.zero,
+            right: !isFirst ? const Radius.circular(10) : Radius.zero,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : AppTheme.textSecondary,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -291,7 +384,20 @@ class _IndexCard extends StatelessWidget {
 
 class _StockListTile extends StatelessWidget {
   final Stock stock;
-  const _StockListTile({required this.stock});
+  final bool isIDX;
+  const _StockListTile({required this.stock, required this.isIDX});
+
+  String _formatPrice(double price) {
+    if (isIDX) {
+      // IDR prices are in full rupiah, format with thousand separators
+      final formatted = price.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (m) => '${m[1]}.',
+      );
+      return 'Rp $formatted';
+    }
+    return '\$${price.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -360,9 +466,9 @@ class _StockListTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${stock.price.toStringAsFixed(2)}',
+                _formatPrice(stock.price),
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: isIDX ? 12 : 14,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
