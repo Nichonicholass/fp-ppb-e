@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../shared/providers/portfolio_provider.dart';
 
 class PortfolioPage extends StatelessWidget {
   const PortfolioPage({super.key});
@@ -36,7 +38,9 @@ class PortfolioPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ...AppData.ownedStocks.map((s) => _HoldingTile(owned: s)),
+            ...context.watch<PortfolioProvider>().holdings.map((s) => _HoldingTile(owned: s)),
+            if (context.watch<PortfolioProvider>().holdings.isEmpty)
+              const _EmptyHoldings(),
             const SizedBox(height: 24),
           ],
         ),
@@ -50,6 +54,11 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final portfolio = context.watch<PortfolioProvider>();
+    final ret = portfolio.portfolioReturn;
+    final retPct = portfolio.portfolioReturnPercent;
+    final isPositive = ret >= 0;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -74,7 +83,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '\$${AppData.virtualBalance.toStringAsFixed(2)}',
+            '\$${portfolio.balance.toStringAsFixed(2)}',
             style: GoogleFonts.inter(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -86,7 +95,7 @@ class _BalanceCard extends StatelessWidget {
             children: [
               _BalanceStat(
                 label: 'Total Invested',
-                value: '\$${AppData.totalInvested.toStringAsFixed(2)}',
+                value: '\$${portfolio.totalInvested.toStringAsFixed(2)}',
               ),
               Container(
                 width: 1,
@@ -96,8 +105,8 @@ class _BalanceCard extends StatelessWidget {
               ),
               _BalanceStat(
                 label: 'Total Return',
-                value: '+\$${AppData.portfolioReturn.toStringAsFixed(2)}',
-                badge: '+${AppData.portfolioReturnPercent}%',
+                value: '${isPositive ? '+' : ''}\$${ret.toStringAsFixed(2)}',
+                badge: '${isPositive ? '+' : ''}${retPct.toStringAsFixed(2)}%',
               ),
             ],
           ),
@@ -358,6 +367,40 @@ class _HoldingTile extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyHoldings extends StatelessWidget {
+  const _EmptyHoldings();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        children: [
+          const Icon(Icons.show_chart_rounded, size: 48, color: AppTheme.textSecondary),
+          const SizedBox(height: 12),
+          Text(
+            'No holdings yet',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Go to Market and buy your first stock',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
           ),
         ],
       ),

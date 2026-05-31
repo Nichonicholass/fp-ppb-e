@@ -87,11 +87,24 @@ class MarketIndex {
   });
 }
 
+class Transaction {
+  final Stock stock;
+  final int shares;
+  final double price;
+  final double total;
+  final DateTime timestamp;
+
+  Transaction({
+    required this.stock,
+    required this.shares,
+    required this.price,
+    required this.total,
+    required this.timestamp,
+  });
+}
+
 class AppData {
-  static const double virtualBalance = 52450.00;
-  static const double totalInvested = 49239.50;
-  static const double portfolioReturn = 3210.50;
-  static const double portfolioReturnPercent = 6.51;
+  static const double initialBalance = 10000.00;
 
   static const List<MarketIndex> indices = [
     MarketIndex(name: 'S&P 500', value: 5306.04, changePercent: 0.48),
@@ -202,12 +215,6 @@ class AppData {
     ),
   ];
 
-  static List<OwnedStock> get ownedStocks => [
-        OwnedStock(stock: popularStocks[0], shares: 50, avgPrice: 165.20),
-        OwnedStock(stock: popularStocks[1], shares: 30, avgPrice: 380.00),
-        OwnedStock(stock: popularStocks[4], shares: 15, avgPrice: 620.50),
-        OwnedStock(stock: popularStocks[5], shares: 20, avgPrice: 460.00),
-      ];
 
   static const List<Stock> watchlistTech = [
     Stock(

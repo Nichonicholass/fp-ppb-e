@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'shared/providers/nav_provider.dart';
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/market_provider.dart';
+import 'shared/providers/portfolio_provider.dart';
 import 'features/auth/auth_page.dart';
 import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
@@ -32,6 +33,7 @@ await Firebase.initializeApp(
         ChangeNotifierProvider(create: (_) => NavProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MarketProvider()),
+        ChangeNotifierProvider(create: (_) => PortfolioProvider()),
       ],
       child: const FintellApp(),
     ),
