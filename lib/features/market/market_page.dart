@@ -1,35 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../shared/providers/auth_provider.dart';
+import '../../shared/providers/market_provider.dart';
 
 class MarketPage extends StatelessWidget {
   const MarketPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final market = context.watch<MarketProvider>();
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildMarketOverview()),
-            SliverToBoxAdapter(child: _buildSearchBar()),
-            SliverToBoxAdapter(child: _buildSectionTitle('Popular Stocks')),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (ctx, i) => _StockListTile(stock: AppData.popularStocks[i]),
-                childCount: AppData.popularStocks.length,
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+        child: RefreshIndicator(
+          onRefresh: market.fetchAll,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader(context)),
+              SliverToBoxAdapter(child: _buildMarketOverview(market.indices)),
+              SliverToBoxAdapter(child: _buildSearchBar()),
+              SliverToBoxAdapter(child: _buildSectionTitle('Popular Stocks')),
+              if (market.isLoading && !market.hasData)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _StockListTile(stock: market.stocks[i]),
+                    childCount: market.stocks.length,
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  String _formattedDate() {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final now = DateTime.now();
+    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? '';
+    final displayName = user?.displayName?.isNotEmpty == true
+        ? user!.displayName!
+        : email.split('@').first;
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Row(
@@ -39,7 +73,7 @@ class MarketPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Good Morning, Nicholas 👋',
+                  '${_greeting()}, $displayName 👋',
                   style: GoogleFonts.inter(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -48,21 +82,24 @@ class MarketPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Sunday, May 25, 2026',
+                  _formattedDate(),
                   style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
                 ),
               ],
             ),
           ),
-          CircleAvatar(
-            backgroundColor: AppTheme.primaryLight,
-            radius: 22,
-            child: Text(
-              'N',
-              style: GoogleFonts.inter(
-                color: AppTheme.primary,
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
+          GestureDetector(
+            onTap: () => _showProfileSheet(context),
+            child: CircleAvatar(
+              backgroundColor: AppTheme.primaryLight,
+              radius: 22,
+              child: Text(
+                initial,
+                style: GoogleFonts.inter(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),
@@ -71,7 +108,70 @@ class MarketPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMarketOverview() {
+  void _showProfileSheet(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              user?.email ?? '',
+              style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                Navigator.pop(context);
+                await context.read<AuthProvider>().signOut();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.logout_rounded, color: AppTheme.negative, size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Sign Out',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.negative,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMarketOverview(List<MarketIndex> indices) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 0, 0),
       child: Column(
@@ -91,9 +191,9 @@ class MarketPage extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.only(right: 20),
-              itemCount: AppData.indices.length,
+              itemCount: indices.length,
               separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (ctx, i) => _IndexCard(index: AppData.indices[i]),
+              itemBuilder: (ctx, i) => _IndexCard(index: indices[i]),
             ),
           ),
         ],
