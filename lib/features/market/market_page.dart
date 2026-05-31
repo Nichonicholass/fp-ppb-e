@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/market_provider.dart';
+import 'stock_detail_page.dart';
 
 class MarketPage extends StatelessWidget {
   const MarketPage({super.key});
@@ -404,7 +405,14 @@ class _StockListTile extends StatelessWidget {
     final isPositive = stock.changePercent >= 0;
     final tickerDisplay = stock.ticker.length > 4 ? stock.ticker.substring(0, 4) : stock.ticker;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StockDetailPage(stock: stock, isIDX: isIDX),
+        ),
+      ),
+      child: Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -492,6 +500,7 @@ class _StockListTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

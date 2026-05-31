@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class Stock {
   final String ticker;
+  final String symbol; // Full API symbol, e.g. AAPL or BBCA.JK
   final String name;
   final double price;
   final double changePercent;
@@ -12,6 +13,7 @@ class Stock {
 
   const Stock({
     required this.ticker,
+    String? symbol,
     required this.name,
     required this.price,
     required this.changePercent,
@@ -19,7 +21,7 @@ class Stock {
     required this.roe,
     required this.sector,
     required this.color,
-  });
+  }) : symbol = symbol ?? ticker;
 }
 
 class OwnedStock {
