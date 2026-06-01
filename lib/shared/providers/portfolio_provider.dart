@@ -118,6 +118,40 @@ class PortfolioProvider extends ChangeNotifier {
       price: price,
       total: total,
       timestamp: DateTime.now(),
+      type: TransactionType.buy,
+    ));
+
+    notifyListeners();
+    _saveToFirestore();
+  }
+
+  void sellStock(Stock stock, int shares, double price) {
+    final idx = _holdings.indexWhere((h) => h.stock.ticker == stock.ticker);
+    if (idx < 0) throw Exception('Holding not found');
+
+    final existing = _holdings[idx];
+    if (shares > existing.shares) throw Exception('Not enough shares');
+
+    final proceeds = shares * price;
+    _balance += proceeds;
+
+    if (shares == existing.shares) {
+      _holdings.removeAt(idx);
+    } else {
+      _holdings[idx] = OwnedStock(
+        stock: existing.stock,
+        shares: existing.shares - shares,
+        avgPrice: existing.avgPrice,
+      );
+    }
+
+    _transactions.add(Transaction(
+      stock: stock,
+      shares: shares,
+      price: price,
+      total: proceeds,
+      timestamp: DateTime.now(),
+      type: TransactionType.sell,
     ));
 
     notifyListeners();
@@ -170,6 +204,7 @@ class PortfolioProvider extends ChangeNotifier {
         'transactionPrice': t.price,
         'total': t.total,
         'timestamp': t.timestamp.toIso8601String(),
+        'type': t.type.name,
       };
 
   Transaction _transactionFromMap(Map<String, dynamic> m) => Transaction(
@@ -188,6 +223,7 @@ class PortfolioProvider extends ChangeNotifier {
         price: (m['transactionPrice'] as num).toDouble(),
         total: (m['total'] as num).toDouble(),
         timestamp: DateTime.parse(m['timestamp'] as String),
+        type: TransactionType.values.byName((m['type'] as String?) ?? 'buy'),
       );
 
   @override

@@ -87,12 +87,15 @@ class MarketIndex {
   });
 }
 
+enum TransactionType { buy, sell }
+
 class Transaction {
   final Stock stock;
   final int shares;
   final double price;
   final double total;
   final DateTime timestamp;
+  final TransactionType type;
 
   Transaction({
     required this.stock,
@@ -100,6 +103,7 @@ class Transaction {
     required this.price,
     required this.total,
     required this.timestamp,
+    this.type = TransactionType.buy,
   });
 }
 
