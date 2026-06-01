@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"fintell-b789b","appId":"1:895733104595:android:07afaed6bea5ef1a657926","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"fintell-b789b","configurations":{"android":"1:895733104595:android:07afaed6bea5ef1a657926","ios":"1:895733104595:ios:cb3012d92ea837a3657926"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "fintell-b789b",
+          "appId": "1:895733104595:android:07afaed6bea5ef1a657926",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "fintell-b789b",
+          "configurations": {
+            "android": "1:895733104595:android:07afaed6bea5ef1a657926",
+            "ios": "1:895733104595:ios:cb3012d92ea837a3657926"
+          }
+        }
+      }
+    }
+  }
+}
