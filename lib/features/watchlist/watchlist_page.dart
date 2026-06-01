@@ -5,6 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../shared/providers/watchlist_provider.dart';
 import '../../shared/providers/market_provider.dart';
+import '../market/stock_detail_page.dart';
+
 
 class WatchlistPage extends StatefulWidget {
   const WatchlistPage({super.key});
@@ -250,101 +252,116 @@ class _WatchlistTile extends StatelessWidget {
     final isPositive = stock.changePercent >= 0;
     final tickerDisplay =
         stock.ticker.length > 4 ? stock.ticker.substring(0, 4) : stock.ticker;
+    final isIDX = context.read<MarketProvider>().isIDX;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
+    return Material(
+      color: AppTheme.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: stock.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                tickerDisplay,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: stock.color,
-                ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StockDetailPage(
+                stock: stock,
+                isIDX: isIDX,
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stock.ticker,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: stock.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    tickerDisplay,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: stock.color,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  stock.name,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 7),
-                Row(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Tag(label: 'PE ${stock.peRatio}x'),
-                    const SizedBox(width: 6),
-                    _Tag(label: 'ROE ${stock.roe}%'),
-                    const SizedBox(width: 6),
-                    _Tag(label: stock.sector),
+                    Text(
+                      stock.ticker,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      stock.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      children: [
+                        _Tag(label: 'PE ${stock.peRatio}x'),
+                        const SizedBox(width: 6),
+                        _Tag(label: 'ROE ${stock.roe}%'),
+                        const SizedBox(width: 6),
+                        _Tag(label: stock.sector),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '\$${stock.price.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
               ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isPositive
-                      ? const Color(0xFFD1FAE5)
-                      : const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${isPositive ? '+' : ''}${stock.changePercent.toStringAsFixed(2)}%',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isPositive ? AppTheme.positive : AppTheme.negative,
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '\$${stock.price.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isPositive
+                          ? const Color(0xFFD1FAE5)
+                          : const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${isPositive ? '+' : ''}${stock.changePercent.toStringAsFixed(2)}%',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isPositive ? AppTheme.positive : AppTheme.negative,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

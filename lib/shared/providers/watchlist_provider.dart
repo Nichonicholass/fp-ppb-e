@@ -51,7 +51,49 @@ class WatchlistProvider extends ChangeNotifier {
   void removeStock(String sector, String ticker) {
     _watchlists[sector]?.removeWhere((s) => s.ticker == ticker);
     notifyListeners();
+  }
 
+  void toggleWatchlist(Stock stock) {
+  
+    String? foundSector;
+  
+    for (final entry in _watchlists.entries) {
+  
+      if (entry.value.any((s) => s.ticker == stock.ticker)) {
+        foundSector = entry.key;
+        break;
+      }
+  
+    }
+
+    if (foundSector != null) {
+      removeStock(foundSector, stock.ticker);
+  
+    } else {
+      final targetSector = _mapSector(stock.sector);
+      addStock(targetSector, stock);
+  
+    }
+  
+  }
+
+  String _mapSector(String stockSector) {
+  
+    final s = stockSector.toLowerCase();
+  
+    if (s.contains('tech') || s.contains('tele') || s.contains('comm') || s.contains('indus')) {
+      return 'Technology';
+  
+    } else if (s.contains('fin') || s.contains('keu')) {
+      return 'Finance';
+  
+    } else if (s.contains('health') || s.contains('kes')) {
+      return 'Healthcare';
+    }
+  
+    return 'Technology';
+  
   }
 
 }
+

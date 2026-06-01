@@ -6,6 +6,8 @@ import '../../core/services/market_service.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/providers/portfolio_provider.dart';
+import '../../shared/providers/watchlist_provider.dart';
+
 
 class StockDetailPage extends StatefulWidget {
   final Stock stock;
@@ -80,6 +82,8 @@ class _StockDetailPageState extends State<StockDetailPage> {
   @override
   Widget build(BuildContext context) {
     final stock = widget.stock;
+    final watchlistProvider = context.watch<WatchlistProvider>();
+    final isWatched = watchlistProvider.isWatched(stock.ticker);
 
     return Scaffold(
       appBar: AppBar(
@@ -110,17 +114,46 @@ class _StockDetailPageState extends State<StockDetailPage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.bookmark_border_rounded,
-                size: 18,
-                color: AppTheme.textSecondary,
+            child: InkWell(
+              onTap: () {
+                watchlistProvider.toggleWatchlist(stock);
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isWatched
+                            ? 'Removed ${stock.ticker} from watchlist'
+                            : 'Added ${stock.ticker} to watchlist',
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: isWatched ? AppTheme.textPrimary : AppTheme.primaryDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isWatched
+                      ? AppTheme.primaryLight
+                      : AppTheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isWatched
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  size: 18,
+                  color: isWatched ? AppTheme.primary : AppTheme.textSecondary,
+                ),
               ),
             ),
           ),
