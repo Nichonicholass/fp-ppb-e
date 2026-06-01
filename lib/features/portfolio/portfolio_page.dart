@@ -38,9 +38,16 @@ class PortfolioPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ...context.watch<PortfolioProvider>().holdings.map((s) => _HoldingTile(owned: s)),
+            ...context.watch<PortfolioProvider>().holdings.map(
+              (s) => _HoldingTile(
+                owned: s,
+                onSell: () => _showSellSheet(context, s),
+              ),
+            ),
             if (context.watch<PortfolioProvider>().holdings.isEmpty)
               const _EmptyHoldings(),
+            const SizedBox(height: 24),
+            const _TransactionHistorySection(),
             const SizedBox(height: 24),
           ],
         ),
@@ -288,7 +295,8 @@ class _LineChartPainter extends CustomPainter {
 
 class _HoldingTile extends StatelessWidget {
   final OwnedStock owned;
-  const _HoldingTile({required this.owned});
+  final VoidCallback? onSell;
+  const _HoldingTile({required this.owned, this.onSell});
 
   @override
   Widget build(BuildContext context) {
@@ -368,6 +376,25 @@ class _HoldingTile extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onSell,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.negative.withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Sell',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.negative,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -401,6 +428,425 @@ class _EmptyHoldings extends StatelessWidget {
               fontSize: 13,
               color: AppTheme.textSecondary,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Sell Sheet ────────────────────────────────────────────────────────────────
+
+void _showSellSheet(BuildContext context, OwnedStock holding) {
+  final portfolio = context.read<PortfolioProvider>();
+  int qty = 1;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => StatefulBuilder(
+      builder: (ctx, setSheetState) {
+        final livePrice = holding.stock.price;
+        final proceeds = qty * livePrice;
+        final tickerDisplay = holding.stock.ticker.length > 4
+            ? holding.stock.ticker.substring(0, 4)
+            : holding.stock.ticker;
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            24 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: holding.stock.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        tickerDisplay,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: holding.stock.color,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          holding.stock.ticker,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          holding.stock.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '\$${livePrice.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Shares Owned',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${holding.shares}',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Shares to Sell',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _SellQtyButton(
+                    icon: Icons.remove_rounded,
+                    enabled: qty > 1,
+                    onTap: () => setSheetState(() => qty--),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        '$qty',
+                        style: GoogleFonts.inter(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  _SellQtyButton(
+                    icon: Icons.add_rounded,
+                    enabled: qty < holding.shares,
+                    onTap: () => setSheetState(() => qty++),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Estimated Proceeds',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    '\$${proceeds.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.positive,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () {
+                    portfolio.sellStock(holding.stock, qty, livePrice);
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Sold $qty share${qty > 1 ? 's' : ''} of ${holding.stock.ticker}',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                        ),
+                        backgroundColor: AppTheme.negative,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.negative,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Confirm Sell',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+class _SellQtyButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  const _SellQtyButton({required this.icon, required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: enabled
+              ? AppTheme.negative.withValues(alpha: 0.1)
+              : AppTheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: enabled ? AppTheme.negative : AppTheme.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Transaction History ───────────────────────────────────────────────────────
+
+class _TransactionHistorySection extends StatelessWidget {
+  const _TransactionHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    final transactions = context.watch<PortfolioProvider>().transactions;
+    final recent = transactions.reversed.take(20).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Transaction History',
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (recent.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.receipt_long_rounded,
+                  size: 36,
+                  color: AppTheme.textSecondary,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'No transactions yet',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: recent.length,
+              separatorBuilder: (_, _) => const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppTheme.divider,
+              ),
+              itemBuilder: (_, i) => _TransactionRow(tx: recent[i]),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TransactionRow extends StatelessWidget {
+  final Transaction tx;
+  const _TransactionRow({required this.tx});
+
+  @override
+  Widget build(BuildContext context) {
+    final isBuy = tx.type == TransactionType.buy;
+    final badgeColor = isBuy ? AppTheme.positive : AppTheme.negative;
+    final badgeBg = isBuy
+        ? AppTheme.positive.withValues(alpha: 0.1)
+        : AppTheme.negative.withValues(alpha: 0.1);
+
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final d = tx.timestamp;
+    final dateStr = '${months[d.month - 1]} ${d.day}, ${d.year}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              isBuy ? 'BUY' : 'SELL',
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: badgeColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tx.stock.ticker,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateStr,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '\$${tx.total.toStringAsFixed(2)}',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${tx.shares} sh @ \$${tx.price.toStringAsFixed(2)}',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
           ),
         ],
       ),
