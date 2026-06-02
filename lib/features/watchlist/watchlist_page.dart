@@ -7,6 +7,21 @@ import '../../shared/providers/watchlist_provider.dart';
 import '../../shared/providers/market_provider.dart';
 import '../market/stock_detail_page.dart';
 
+bool _isIdxStock(Stock stock) => stock.symbol.toUpperCase().endsWith('.JK');
+
+String _formatStockPrice(Stock stock) {
+  if (stock.price <= 0) return 'N/A';
+
+  if (_isIdxStock(stock)) {
+    final formatted = stock.price.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    );
+    return 'Rp $formatted';
+  }
+
+  return '\$${stock.price.toStringAsFixed(2)}';
+}
 
 class WatchlistPage extends StatefulWidget {
   const WatchlistPage({super.key});
@@ -141,20 +156,26 @@ class _SectorList extends StatelessWidget {
       return _EmptyState(sector: sector);
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      itemCount: stocks.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
-      itemBuilder: (ctx, i) {
-        final stock = stocks[i];
-        return Dismissible(
-          key: ValueKey('${sector}_${stock.ticker}'),
-          direction: DismissDirection.endToStart,
-          onDismissed: (_) => onRemove(stock, i),
-          background: const _SwipeBackground(),
-          child: _WatchlistTile(stock: stock),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: () => context.read<MarketProvider>().fetchAll(),
+      color: AppTheme.primary,
+      backgroundColor: Colors.white,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        itemCount: stocks.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (ctx, i) {
+          final stock = stocks[i];
+          return Dismissible(
+            key: ValueKey('${sector}_${stock.ticker}'),
+            direction: DismissDirection.endToStart,
+            onDismissed: (_) => onRemove(stock, i),
+            background: const _SwipeBackground(),
+            child: _WatchlistTile(stock: stock),
+          );
+        },
+      ),
     );
   }
 }
@@ -332,7 +353,7 @@ class _WatchlistTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '\$${stock.price.toStringAsFixed(2)}',
+                    _formatStockPrice(stock),
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -425,7 +446,6 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
 
     final allStocks = marketProvider.stocks;
 
-    // Filter stocks based on search query
     final filteredStocks = allStocks.where((stock) {
       final q = _searchQuery.toLowerCase();
       return stock.ticker.toLowerCase().contains(q) ||
@@ -440,7 +460,6 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
       ),
       child: Column(
         children: [
-          // Drag handle
           const SizedBox(height: 12),
           Container(
             width: 40,
@@ -452,7 +471,6 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -475,7 +493,6 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
           ),
           const SizedBox(height: 12),
 
-          // Sector selector row
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -531,7 +548,6 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
           ),
           const SizedBox(height: 14),
 
-          // Search input field
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
@@ -568,7 +584,6 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Stock list content
           Expanded(
             child: marketProvider.isLoading
                 ? const Center(
@@ -719,7 +734,7 @@ class _BottomSheetStockTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '\$${stock.price.toStringAsFixed(2)}',
+                _formatStockPrice(stock),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -736,7 +751,7 @@ class _BottomSheetStockTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        '✓ Added',
+                        'Added',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
