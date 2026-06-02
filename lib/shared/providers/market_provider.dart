@@ -76,8 +76,10 @@ class MarketProvider extends ChangeNotifier {
     _IM('^JKII', 'IDX30'),
   ];
 
-  MarketProvider() {
-    fetchAll();
+  MarketProvider({bool fetchOnCreate = true}) {
+    if (fetchOnCreate) {
+      fetchAll();
+    }
   }
 
   Future<void> switchMode(MarketMode mode) async {
