@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers/nav_provider.dart';
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/market_provider.dart';
 import 'shared/providers/portfolio_provider.dart';
+import 'shared/providers/watchlist_provider.dart';
 import 'features/auth/auth_page.dart';
 import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
@@ -18,9 +20,15 @@ import 'features/ai_mentor/ai_mentor_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-await Firebase.initializeApp(
+  await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -34,6 +42,7 @@ await Firebase.initializeApp(
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MarketProvider()),
         ChangeNotifierProvider(create: (_) => PortfolioProvider()),
+        ChangeNotifierProvider(create: (_) => WatchlistProvider()),
       ],
       child: const FintellApp(),
     ),
