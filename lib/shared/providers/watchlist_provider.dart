@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../core/services/market_service.dart';
 
 class WatchlistProvider extends ChangeNotifier {
   static const List<String> _defaultSectors = [
@@ -22,6 +23,7 @@ class WatchlistProvider extends ChangeNotifier {
 
   WatchlistProvider() {
     _initAuthListener();
+    fetchWatchlistPrices();
   }
 
   void _initAuthListener() {
@@ -43,7 +45,18 @@ class WatchlistProvider extends ChangeNotifier {
 
               for (final tickerObj in tickers) {
                 final ticker = tickerObj.toString();
-                final stock = _resolveStock(ticker);
+                
+                Stock? existing;
+                if (_watchlists.containsKey(sector)) {
+                  for (final s in _watchlists[sector]!) {
+                    if (_matchesStock(s, ticker)) {
+                      existing = s;
+                      break;
+                    }
+                  }
+                }
+
+                final stock = existing ?? _resolveStock(ticker);
 
                 if (stock != null) {
                   resolvedStocks.add(stock);
@@ -54,6 +67,7 @@ class WatchlistProvider extends ChangeNotifier {
             }
 
             notifyListeners();
+            fetchWatchlistPrices();
           } else {
             _syncToFirestore();
           }
@@ -66,6 +80,7 @@ class WatchlistProvider extends ChangeNotifier {
         _watchlists['Healthcare'] = List<Stock>.from(AppData.watchlistHealth);
 
         notifyListeners();
+        fetchWatchlistPrices();
       }
     });
   }
@@ -86,6 +101,54 @@ class WatchlistProvider extends ChangeNotifier {
         .catchError((err) {
       debugPrint('Error syncing watchlist to Firestore: $err');
     });
+  }
+
+  final _service = MarketService();
+
+  Future<void> fetchWatchlistPrices() async {
+    final List<String> symbolsToFetch = [];
+    for (final list in _watchlists.values) {
+      for (final stock in list) {
+        if (!symbolsToFetch.contains(stock.symbol)) {
+          symbolsToFetch.add(stock.symbol);
+        }
+      }
+    }
+
+    if (symbolsToFetch.isEmpty) return;
+
+    try {
+      final quotes = await _service.fetchQuotes(symbolsToFetch);
+      bool updatedAny = false;
+
+      for (final sector in _watchlists.keys) {
+        final list = _watchlists[sector]!;
+        for (int i = 0; i < list.length; i++) {
+          final stock = list[i];
+          final quote = quotes[stock.symbol];
+          if (quote != null) {
+            list[i] = Stock(
+              ticker: stock.ticker,
+              symbol: stock.symbol,
+              name: stock.name,
+              price: quote.price,
+              changePercent: quote.changePercent,
+              peRatio: stock.peRatio,
+              roe: stock.roe,
+              sector: stock.sector,
+              color: stock.color,
+            );
+            updatedAny = true;
+          }
+        }
+      }
+
+      if (updatedAny) {
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching watchlist prices: $e');
+    }
   }
 
   List<String> get sectors => _watchlists.keys.toList();

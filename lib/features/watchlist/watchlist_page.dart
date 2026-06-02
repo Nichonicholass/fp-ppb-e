@@ -157,7 +157,12 @@ class _SectorList extends StatelessWidget {
     }
 
     return RefreshIndicator(
-      onRefresh: () => context.read<MarketProvider>().fetchAll(),
+      onRefresh: () async {
+        await Future.wait([
+          context.read<MarketProvider>().fetchAll(),
+          context.read<WatchlistProvider>().fetchWatchlistPrices(),
+        ]);
+      },
       color: AppTheme.primary,
       backgroundColor: Colors.white,
       child: ListView.separated(
