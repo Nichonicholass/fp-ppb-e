@@ -336,12 +336,12 @@ class _WatchlistTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 7),
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         _Tag(label: 'PE ${stock.peRatio}x'),
-                        const SizedBox(width: 6),
                         _Tag(label: 'ROE ${stock.roe}%'),
-                        const SizedBox(width: 6),
                         _Tag(label: stock.sector),
                       ],
                     ),
