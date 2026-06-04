@@ -11,11 +11,13 @@ class PortfolioProvider extends ChangeNotifier {
   String? _userId;
   bool _loading = false;
   double _balance = AppData.initialBalance;
+  bool _todayRewardClaimed = false;
   final List<OwnedStock> _holdings = [];
   final List<Transaction> _transactions = [];
 
   bool get loading => _loading;
   double get balance => _balance;
+  bool get todayRewardClaimed => _todayRewardClaimed;
   List<OwnedStock> get holdings => List.unmodifiable(_holdings);
   List<Transaction> get transactions => List.unmodifiable(_transactions);
 
@@ -41,6 +43,7 @@ class PortfolioProvider extends ChangeNotifier {
     _balance = AppData.initialBalance;
     _holdings.clear();
     _transactions.clear();
+    _todayRewardClaimed = false;
     _loading = false;
     notifyListeners();
   }
@@ -57,6 +60,15 @@ class PortfolioProvider extends ChangeNotifier {
           .collection('portfolio')
           .doc('data')
           .get();
+
+      final now = DateTime.now();
+      final rewardSnap = await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('quizRewards')
+          .doc(_rewardDayKey(now))
+          .get();
+      _todayRewardClaimed = rewardSnap.exists;
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -76,6 +88,21 @@ class PortfolioProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> checkTodayRewardClaimed() async {
+    if (_userId == null) return;
+    try {
+      final now = DateTime.now();
+      final doc = await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('quizRewards')
+          .doc(_rewardDayKey(now))
+          .get();
+      _todayRewardClaimed = doc.exists;
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> _saveToFirestore() async {
@@ -158,6 +185,84 @@ class PortfolioProvider extends ChangeNotifier {
     _saveToFirestore();
   }
 
+  Future<bool> claimQuizReward({
+    required String sessionId,
+    required int score,
+    required int totalQuestions,
+    double rewardPerCorrect = 100,
+  }) async {
+    final userId = _userId;
+    if (userId == null) {
+      throw Exception('Please sign in to claim quiz rewards.');
+    }
+    if (totalQuestions <= 0) {
+      throw Exception('Quiz has no questions.');
+    }
+
+    final normalizedScore = score.clamp(0, totalQuestions).toInt();
+    final rewardAmount = normalizedScore * rewardPerCorrect;
+    if (rewardAmount <= 0) return false;
+
+    final now = DateTime.now();
+    final rewardRef = _db
+        .collection('users')
+        .doc(userId)
+        .collection('quizRewards')
+        .doc(_rewardDayKey(now));
+    final portfolioRef = _db
+        .collection('users')
+        .doc(userId)
+        .collection('portfolio')
+        .doc('data');
+
+    final result = await _db.runTransaction<_QuizRewardTransactionResult>((tx) async {
+      final rewardSnap = await tx.get(rewardRef);
+      if (rewardSnap.exists) {
+        return _QuizRewardTransactionResult(
+          claimed: false,
+          balance: _balance,
+        );
+      }
+
+      final portfolioSnap = await tx.get(portfolioRef);
+      final currentBalance = portfolioSnap.exists
+          ? ((portfolioSnap.data()?['balance'] as num?)?.toDouble() ??
+              AppData.initialBalance)
+          : AppData.initialBalance;
+      final newBalance = currentBalance + rewardAmount;
+
+      tx.set(
+        portfolioRef,
+        {
+          'balance': newBalance,
+          if (!portfolioSnap.exists) 'holdings': <Map<String, dynamic>>[],
+          if (!portfolioSnap.exists) 'transactions': <Map<String, dynamic>>[],
+        },
+        SetOptions(merge: true),
+      );
+      tx.set(rewardRef, {
+        'claimedAt': FieldValue.serverTimestamp(),
+        'score': normalizedScore,
+        'totalQuestions': totalQuestions,
+        'rewardAmount': rewardAmount,
+        'sessionId': sessionId,
+      });
+
+      return _QuizRewardTransactionResult(
+        claimed: true,
+        balance: newBalance,
+      );
+    });
+
+    if (result.claimed) {
+      _balance = result.balance;
+      _todayRewardClaimed = true;
+      notifyListeners();
+    }
+
+    return result.claimed;
+  }
+
   // --- Serialization helpers ---
 
   Map<String, dynamic> _holdingToMap(OwnedStock h) => {
@@ -226,9 +331,26 @@ class PortfolioProvider extends ChangeNotifier {
         type: TransactionType.values.byName((m['type'] as String?) ?? 'buy'),
       );
 
+  String _rewardDayKey(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year$month$day';
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();
     super.dispose();
   }
+}
+
+class _QuizRewardTransactionResult {
+  final bool claimed;
+  final double balance;
+
+  const _QuizRewardTransactionResult({
+    required this.claimed,
+    required this.balance,
+  });
 }
