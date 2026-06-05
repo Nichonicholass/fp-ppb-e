@@ -1,43 +1,64 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../dummy_data/quiz_data.dart';
 
 class QuizQuestion {
   final String id;
   final String question;
   final List<String> options;
+  final int correctIndex;
+  final String explanation;
+  final String topic;
+  final String difficulty;
+  final bool active;
 
   const QuizQuestion({
     required this.id,
     required this.question,
     required this.options,
+    required this.correctIndex,
+    required this.explanation,
+    required this.topic,
+    required this.difficulty,
+    this.active = true,
   });
+
+  factory QuizQuestion.fromFirestore(Map<String, dynamic> json, String docId) {
+    return QuizQuestion(
+      id: docId,
+      question: json['question'] as String? ?? '',
+      options: (json['options'] as List<dynamic>? ?? []).cast<String>(),
+      correctIndex: json['correctIndex'] as int? ?? 0,
+      explanation: json['explanation'] as String? ?? '',
+      topic: json['topic'] as String? ?? '',
+      difficulty: json['difficulty'] as String? ?? 'beginner',
+      active: json['active'] as bool? ?? true,
+    );
+  }
 
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
     return QuizQuestion(
-      id: json['id'] as String,
-      question: json['question'] as String,
-      options: (json['options'] as List<dynamic>).cast<String>(),
+      id: json['id'] as String? ?? '',
+      question: json['question'] as String? ?? '',
+      options: (json['options'] as List<dynamic>? ?? []).cast<String>(),
+      correctIndex: json['correctIndex'] as int? ?? 0,
+      explanation: json['explanation'] as String? ?? '',
+      topic: json['topic'] as String? ?? '',
+      difficulty: json['difficulty'] as String? ?? 'beginner',
+      active: json['active'] as bool? ?? true,
     );
   }
-}
 
-class QuizSession {
-  final String sessionId;
-  final List<QuizQuestion> questions;
-
-  const QuizSession({
-    required this.sessionId,
-    required this.questions,
-  });
-
-  factory QuizSession.fromJson(Map<String, dynamic> json) {
-    return QuizSession(
-      sessionId: json['sessionId'] as String,
-      questions: (json['questions'] as List<dynamic>)
-          .map((item) => QuizQuestion.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'question': question,
+      'options': options,
+      'correctIndex': correctIndex,
+      'explanation': explanation,
+      'topic': topic,
+      'difficulty': difficulty,
+      'active': active,
+    };
   }
 }
 
@@ -61,103 +82,44 @@ class QuizAnswerResult {
   }
 }
 
-class QuizApiException implements Exception {
-  final int statusCode;
-  final String code;
-  final String message;
-
-  const QuizApiException({
-    required this.statusCode,
-    required this.code,
-    required this.message,
-  });
-
-  @override
-  String toString() => message;
-}
-
 class QuizService {
-  static final Uri defaultBaseUrl =
-      Uri.parse('https://fintell-quiz-backend.vercel.app');
-
-  final http.Client _client;
-  final Uri _baseUrl;
+  final FirebaseFirestore _db;
 
   QuizService({
-    http.Client? client,
-    Uri? baseUrl,
-  })  : _client = client ?? http.Client(),
-        _baseUrl = baseUrl ?? defaultBaseUrl;
+    FirebaseFirestore? db,
+  }) : _db = db ?? FirebaseFirestore.instance;
 
-  Future<QuizSession> createSession({
-    String difficulty = 'beginner',
-    int limit = 5,
-  }) async {
-    final response = await _client
-        .post(
-          _buildUri('/api/quiz/session'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'difficulty': difficulty,
-            'limit': limit,
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
-
-    return QuizSession.fromJson(_decodeResponse(response));
-  }
-
-  Future<QuizAnswerResult> answerQuestion({
-    required String sessionId,
-    required String questionId,
-    required int selectedIndex,
-  }) async {
-    final response = await _client
-        .post(
-          _buildUri('/api/quiz/answer'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'sessionId': sessionId,
-            'questionId': questionId,
-            'selectedIndex': selectedIndex,
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
-
-    return QuizAnswerResult.fromJson(_decodeResponse(response));
-  }
-
-  Uri _buildUri(String path) {
-    return _baseUrl.replace(path: path, queryParameters: null);
-  }
-
-  Map<String, dynamic> _decodeResponse(http.Response response) {
-    final decoded = _decodeBody(response.body);
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final error = decoded['error'] as Map<String, dynamic>?;
-      throw QuizApiException(
-        statusCode: response.statusCode,
-        code: error?['code'] as String? ?? 'server_error',
-        message: error?['message'] as String? ?? 'Quiz request failed.',
-      );
+  /// Fetches all active questions from the Firestore 'questions' collection.
+  Future<List<QuizQuestion>> fetchQuestions() async {
+    final snapshot = await _db
+        .collection('questions')
+        .where('active', isEqualTo: true)
+        .get();
+    
+    // If the database has no questions yet, return the default questions locally
+    // to prevent blank screen while seeding runs or permissions propagation.
+    if (snapshot.docs.isEmpty) {
+      return QuizData.defaultQuestions;
     }
 
-    return decoded;
+    return snapshot.docs
+        .map((doc) => QuizQuestion.fromFirestore(doc.data(), doc.id))
+        .toList();
   }
 
-  Map<String, dynamic> _decodeBody(String body) {
+  /// Seeds all default questions to the Firestore 'questions' collection if they don't exist.
+  Future<void> seedQuestionsLocal() async {
     try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) return decoded;
-    } catch (_) {
-      // Fall through to a consistent API exception.
+      for (final q in QuizData.defaultQuestions) {
+        final docRef = _db.collection('questions').doc(q.id);
+        final doc = await docRef.get();
+        if (!doc.exists) {
+          await docRef.set(q.toJson());
+        }
+      }
+    } catch (e) {
+      // Quietly log and ignore, so that it doesn't block the app if rules deny writes
+      print('Local seeding warning: $e');
     }
-
-    throw const QuizApiException(
-      statusCode: 500,
-      code: 'invalid_response',
-      message: 'Quiz server returned an invalid response.',
-    );
   }
 }

@@ -14,12 +14,12 @@ class QuizSummaryView extends StatelessWidget {
     final quiz = context.watch<QuizProvider>();
     final portfolio = context.watch<PortfolioProvider>();
     final sessionId = quiz.sessionId;
-    final reward = quiz.rewardAmount;
-
-    // Safety guard to prevent Null check operator exception during animations/hot reloads
     if (sessionId == null) {
       return const SizedBox.shrink();
     }
+    final reward = quiz.rewardAmount;
+
+    final isCompleted = portfolio.isModuleCompleted(sessionId);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,7 +39,7 @@ class QuizSummaryView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Quiz Complete',
+                'Module Quiz Complete',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: Colors.white.withValues(alpha: 0.82),
@@ -57,7 +57,7 @@ class QuizSummaryView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Reward: \$${reward.toStringAsFixed(0)}',
+                'First-time Reward: \$${(quiz.totalQuestions * 100).toStringAsFixed(0)}',
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -71,35 +71,35 @@ class QuizSummaryView extends StatelessWidget {
         if (quiz.rewardClaimed)
           const _ClaimStatusPanel(
             icon: Icons.check_circle_rounded,
-            title: 'Reward added',
-            message: 'Your virtual cash is now available in Portfolio.',
+            title: 'Reward Claimed!',
+            message: 'Your virtual coins have been added to your Portfolio balance.',
             color: AppTheme.positive,
           )
-        else if (quiz.rewardAlreadyClaimed || portfolio.todayRewardClaimed)
+        else if (quiz.rewardAlreadyClaimed || isCompleted)
           const _ClaimStatusPanel(
             icon: Icons.event_busy_rounded,
-            title: 'Daily reward already claimed',
-            message: 'You can still play quizzes, then claim again tomorrow.',
+            title: 'Reward already claimed',
+            message: 'You have already collected the first-time reward for this module. You can keep practicing to test your knowledge!',
             color: AppTheme.textSecondary,
           )
         else if (reward <= 0)
           const _ClaimStatusPanel(
             icon: Icons.info_rounded,
-            title: 'No reward this round',
-            message: 'Try another quiz and collect cash for correct answers.',
+            title: 'No correct answers',
+            message: 'Get at least one question right to claim your reward coins.',
             color: AppTheme.textSecondary,
           ),
         if (reward > 0 &&
             !quiz.rewardClaimed &&
-            !(quiz.rewardAlreadyClaimed || portfolio.todayRewardClaimed)) ...[
+            !(quiz.rewardAlreadyClaimed || isCompleted)) ...[
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
               onPressed: quiz.canClaimReward
                   ? () => context.read<QuizProvider>().claimReward(
-                        () => portfolio.claimQuizReward(
-                          sessionId: sessionId,
+                        () => portfolio.claimModuleReward(
+                          moduleId: sessionId,
                           score: quiz.score,
                           totalQuestions: quiz.totalQuestions,
                         ),
@@ -125,7 +125,7 @@ class QuizSummaryView extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      'Claim \$${reward.toStringAsFixed(0)}',
+                      'Claim \$${reward.toStringAsFixed(0)} Coins',
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -141,7 +141,7 @@ class QuizSummaryView extends StatelessWidget {
           child: OutlinedButton(
             onPressed: quiz.loading
                 ? null
-                : () => context.read<QuizProvider>().startQuiz(),
+                : () => context.read<QuizProvider>().startQuiz(topic: sessionId, alreadyClaimed: isCompleted),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.primary,
               side: const BorderSide(color: AppTheme.primary),
@@ -150,7 +150,7 @@ class QuizSummaryView extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Play Again',
+              'Retake Quiz',
               style: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -173,7 +173,7 @@ class QuizSummaryView extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Back to Start',
+              'Back to Modules Hub',
               style: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,

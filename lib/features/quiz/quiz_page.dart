@@ -8,7 +8,7 @@ import '../../shared/providers/quiz_provider.dart';
 import 'widgets/error_banner.dart';
 import 'widgets/question_view.dart';
 import 'widgets/quiz_summary_view.dart';
-import 'widgets/start_quiz_view.dart';
+import 'widgets/quiz_modules_hub.dart';
 
 class QuizPage extends StatefulWidget {
   const QuizPage({super.key});
@@ -95,7 +95,10 @@ class _QuizPageState extends State<QuizPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Quiz'),
+          title: Text(
+            isQuizInProgress ? 'Quiz Session' : 'Fintell Academy',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w800),
+          ),
           leading: isQuizInProgress
               ? IconButton(
                   icon: const Icon(Icons.close_rounded),
@@ -144,7 +147,7 @@ class _QuizPageState extends State<QuizPage> {
                           );
                         },
                         child: !quiz.hasSession
-                            ? const StartQuizView(key: ValueKey('start'))
+                            ? const QuizModulesHub(key: ValueKey('modules_hub'))
                             : (quiz.isFinished
                                 ? const QuizSummaryView(key: ValueKey('summary'))
                                 : const QuestionView(key: ValueKey('question'))),

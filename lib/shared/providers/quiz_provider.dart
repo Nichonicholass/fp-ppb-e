@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../core/services/quiz_service.dart';
 
 class QuizProvider extends ChangeNotifier {
@@ -30,7 +29,7 @@ class QuizProvider extends ChangeNotifier {
   bool get rewardClaimed => _rewardClaimed;
   bool get rewardAlreadyClaimed => _rewardAlreadyClaimed;
   String? get error => _error;
-  String? get sessionId => _sessionId;
+  String? get sessionId => _sessionId; // Holds the topic / module name
   int get currentIndex => _currentIndex;
   int get score => _score;
   int get totalQuestions => _questions.length;
@@ -68,21 +67,32 @@ class QuizProvider extends ChangeNotifier {
   Future<void> startQuiz({
     String difficulty = defaultDifficulty,
     int limit = defaultLimit,
+    String? topic,
+    bool alreadyClaimed = false,
   }) async {
     _loading = true;
     _error = null;
     _resetSessionState();
+    _rewardAlreadyClaimed = alreadyClaimed;
     notifyListeners();
 
     try {
-      final session = await _service.createSession(
-        difficulty: difficulty,
-        limit: limit,
-      );
-      _sessionId = session.sessionId;
+      // Run local seeding check quietly first
+      await _service.seedQuestionsLocal();
+
+      final allQuestions = await _service.fetchQuestions();
+      final filtered = topic != null
+          ? allQuestions.where((q) => q.topic == topic).toList()
+          : allQuestions.toList();
+
+      final quizQs = limit > 0 && limit < filtered.length
+          ? filtered.sublist(0, limit)
+          : filtered;
+
+      _sessionId = topic ?? 'general';
       _questions
         ..clear()
-        ..addAll(session.questions);
+        ..addAll(quizQs);
     } catch (e) {
       _error = _messageFromError(e);
     } finally {
@@ -101,14 +111,18 @@ class QuizProvider extends ChangeNotifier {
     _selectedAnswers[question.id] = selectedIndex;
     notifyListeners();
 
+    // A brief delay of 300ms offers a premium visual validation feel
+    await Future.delayed(const Duration(milliseconds: 300));
+
     try {
-      final result = await _service.answerQuestion(
-        sessionId: session,
-        questionId: question.id,
-        selectedIndex: selectedIndex,
+      final isCorrect = selectedIndex == question.correctIndex;
+      final result = QuizAnswerResult(
+        correct: isCorrect,
+        correctIndex: question.correctIndex,
+        explanation: question.explanation,
       );
       _answerResults[question.id] = result;
-      if (result.correct) _score++;
+      if (isCorrect) _score++;
     } catch (e) {
       _selectedAnswers.remove(question.id);
       _error = _messageFromError(e);
@@ -172,7 +186,6 @@ class QuizProvider extends ChangeNotifier {
   }
 
   String _messageFromError(Object error) {
-    if (error is QuizApiException) return error.message;
     final message = error.toString();
     if (message.startsWith('Exception: ')) {
       return message.substring('Exception: '.length);

@@ -12,14 +12,18 @@ class PortfolioProvider extends ChangeNotifier {
   bool _loading = false;
   double _balance = AppData.initialBalance;
   bool _todayRewardClaimed = false;
+  final Set<String> _completedModuleIds = {};
   final List<OwnedStock> _holdings = [];
   final List<Transaction> _transactions = [];
 
   bool get loading => _loading;
   double get balance => _balance;
   bool get todayRewardClaimed => _todayRewardClaimed;
+  Set<String> get completedModuleIds => _completedModuleIds;
   List<OwnedStock> get holdings => List.unmodifiable(_holdings);
   List<Transaction> get transactions => List.unmodifiable(_transactions);
+
+  bool isModuleCompleted(String moduleId) => _completedModuleIds.contains(moduleId);
 
   double get totalInvested => _holdings.fold(0.0, (acc, h) => acc + h.costBasis);
   double get portfolioValue => _holdings.fold(0.0, (acc, h) => acc + h.currentValue);
@@ -43,6 +47,7 @@ class PortfolioProvider extends ChangeNotifier {
     _balance = AppData.initialBalance;
     _holdings.clear();
     _transactions.clear();
+    _completedModuleIds.clear();
     _todayRewardClaimed = false;
     _loading = false;
     notifyListeners();
@@ -61,14 +66,16 @@ class PortfolioProvider extends ChangeNotifier {
           .doc('data')
           .get();
 
-      final now = DateTime.now();
-      final rewardSnap = await _db
+      // Load all completed quizzes
+      final rewardsSnap = await _db
           .collection('users')
           .doc(_userId)
           .collection('quizRewards')
-          .doc(_rewardDayKey(now))
           .get();
-      _todayRewardClaimed = rewardSnap.exists;
+      _completedModuleIds.clear();
+      for (final doc in rewardsSnap.docs) {
+        _completedModuleIds.add(doc.id);
+      }
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -93,14 +100,15 @@ class PortfolioProvider extends ChangeNotifier {
   Future<void> checkTodayRewardClaimed() async {
     if (_userId == null) return;
     try {
-      final now = DateTime.now();
-      final doc = await _db
+      final rewardsSnap = await _db
           .collection('users')
           .doc(_userId)
           .collection('quizRewards')
-          .doc(_rewardDayKey(now))
           .get();
-      _todayRewardClaimed = doc.exists;
+      _completedModuleIds.clear();
+      for (final doc in rewardsSnap.docs) {
+        _completedModuleIds.add(doc.id);
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -191,6 +199,20 @@ class PortfolioProvider extends ChangeNotifier {
     required int totalQuestions,
     double rewardPerCorrect = 100,
   }) async {
+    return claimModuleReward(
+      moduleId: sessionId,
+      score: score,
+      totalQuestions: totalQuestions,
+      rewardPerCorrect: rewardPerCorrect,
+    );
+  }
+
+  Future<bool> claimModuleReward({
+    required String moduleId,
+    required int score,
+    required int totalQuestions,
+    double rewardPerCorrect = 100,
+  }) async {
     final userId = _userId;
     if (userId == null) {
       throw Exception('Please sign in to claim quiz rewards.');
@@ -203,12 +225,11 @@ class PortfolioProvider extends ChangeNotifier {
     final rewardAmount = normalizedScore * rewardPerCorrect;
     if (rewardAmount <= 0) return false;
 
-    final now = DateTime.now();
     final rewardRef = _db
         .collection('users')
         .doc(userId)
         .collection('quizRewards')
-        .doc(_rewardDayKey(now));
+        .doc(moduleId);
     final portfolioRef = _db
         .collection('users')
         .doc(userId)
@@ -245,7 +266,7 @@ class PortfolioProvider extends ChangeNotifier {
         'score': normalizedScore,
         'totalQuestions': totalQuestions,
         'rewardAmount': rewardAmount,
-        'sessionId': sessionId,
+        'moduleId': moduleId,
       });
 
       return _QuizRewardTransactionResult(
@@ -256,7 +277,7 @@ class PortfolioProvider extends ChangeNotifier {
 
     if (result.claimed) {
       _balance = result.balance;
-      _todayRewardClaimed = true;
+      _completedModuleIds.add(moduleId);
       notifyListeners();
     }
 
@@ -330,13 +351,6 @@ class PortfolioProvider extends ChangeNotifier {
         timestamp: DateTime.parse(m['timestamp'] as String),
         type: TransactionType.values.byName((m['type'] as String?) ?? 'buy'),
       );
-
-  String _rewardDayKey(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year$month$day';
-  }
 
   @override
   void dispose() {
