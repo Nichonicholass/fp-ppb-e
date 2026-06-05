@@ -353,53 +353,7 @@ class QuizModulesHub extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          Text(
-                            'Key Lesson Material',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            module.lessonText,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              height: 1.5,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ...module.keyTakeaways.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2.0),
-                                    child: Icon(
-                                      Icons.arrow_right_alt_rounded,
-                                      color: module.gradientColors[0],
-                                      size: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      item,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12.5,
-                                        color: AppTheme.textSecondary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          _LessonMaterialSection(module: module),
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -478,6 +432,207 @@ class _ModuleStatusBadge extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LessonMaterialSection extends StatelessWidget {
+  final QuizModule module;
+
+  const _LessonMaterialSection({required this.module});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = module.gradientColors[0];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.divider),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Key Lesson Material',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _LessonLabel(accent: accent),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: accent.withValues(alpha: 0.14)),
+            ),
+            child: Text(
+              module.lessonText,
+              style: GoogleFonts.inter(
+                fontSize: 13.2,
+                height: 1.58,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          if (module.keyTakeaways.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Key takeaways',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...List.generate(
+              module.keyTakeaways.length,
+              (index) => _TakeawayRow(
+                isLast: index == module.keyTakeaways.length - 1,
+                text: module.keyTakeaways[index],
+                accent: accent,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LessonLabel extends StatelessWidget {
+  final Color accent;
+
+  const _LessonLabel({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: accent.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.auto_awesome_rounded,
+            color: accent,
+            size: 13,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Core concept',
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              color: accent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TakeawayRow extends StatelessWidget {
+  final bool isLast;
+  final String text;
+  final Color accent;
+
+  const _TakeawayRow({
+    required this.isLast,
+    required this.text,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.8)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.check_rounded,
+              color: accent,
+              size: 15,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                height: 1.38,
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
