@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:fintell/core/services/quiz_service.dart';
 import 'package:fintell/core/models/quiz_models.dart';
@@ -6,6 +8,7 @@ class QuizProvider extends ChangeNotifier {
   static const String defaultDifficulty = 'beginner';
   static const int defaultLimit = 5;
   static const double rewardPerCorrectAnswer = 100;
+  static const Duration answerRevealDelay = Duration(milliseconds: 300);
 
   final QuizService _service;
 
@@ -59,7 +62,8 @@ class QuizProvider extends ChangeNotifier {
   List<QuizQuestion> get questions => List.unmodifiable(_questions);
   bool get hasSession => _sessionId != null && _questions.isNotEmpty;
   bool get isFinished => hasSession && _currentIndex >= _questions.length;
-  double get rewardAmount => _score * rewardPerCorrectAnswer;
+  double get rewardAmount => rewardForScore(_score);
+  double get maxRewardAmount => rewardForScore(totalQuestions);
   bool get canClaimReward =>
       isFinished &&
       rewardAmount > 0 &&
@@ -101,13 +105,22 @@ class QuizProvider extends ChangeNotifier {
 
     try {
       final allQuestions = await _service.fetchQuestions();
-      final filtered = topic != null
-          ? allQuestions.where((q) => q.topic == topic).toList()
-          : allQuestions.toList();
+      final selectedDifficulty = difficulty.trim();
+      final filtered = allQuestions.where((q) {
+        final topicMatches = topic == null || q.topic == topic;
+        final difficultyMatches =
+            selectedDifficulty.isEmpty || q.difficulty == selectedDifficulty;
+        return q.isValid && topicMatches && difficultyMatches;
+      }).toList()
+        ..shuffle(Random());
 
       final quizQs = limit > 0 && limit < filtered.length
           ? filtered.sublist(0, limit)
           : filtered;
+
+      if (quizQs.isEmpty) {
+        throw Exception('No quiz questions available for this module yet.');
+      }
 
       _sessionId = topic ?? 'general';
       _questions
@@ -124,25 +137,27 @@ class QuizProvider extends ChangeNotifier {
   Future<void> submitAnswer(int selectedIndex) async {
     final question = currentQuestion;
     final session = _sessionId;
-    if (question == null || session == null || hasAnsweredCurrent) return;
+    if (question == null ||
+        session == null ||
+        hasAnsweredCurrent ||
+        selectedIndex < 0 ||
+        selectedIndex >= question.options.length) {
+      return;
+    }
 
     _submitting = true;
     _error = null;
     _selectedAnswers[question.id] = selectedIndex;
     notifyListeners();
 
-    // A brief delay of 300ms offers a premium visual validation feel
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(answerRevealDelay);
 
     try {
-      final isCorrect = selectedIndex == question.correctIndex;
-      final result = QuizAnswerResult(
-        correct: isCorrect,
-        correctIndex: question.correctIndex,
-        explanation: question.explanation,
-      );
+      if (_sessionId != session || currentQuestion?.id != question.id) return;
+
+      final result = _gradeAnswer(question, selectedIndex);
       _answerResults[question.id] = result;
-      if (isCorrect) _score++;
+      if (result.correct) _score++;
     } catch (e) {
       _selectedAnswers.remove(question.id);
       _error = _messageFromError(e);
@@ -192,6 +207,18 @@ class QuizProvider extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  static double rewardForScore(int score) => score * rewardPerCorrectAnswer;
+
+  QuizAnswerResult _gradeAnswer(QuizQuestion question, int selectedIndex) {
+    final isCorrect = selectedIndex == question.correctIndex;
+    return QuizAnswerResult(
+      correct: isCorrect,
+      correctIndex: question.correctIndex,
+      correctAnswerLabel: question.correctAnswerLabel,
+      explanation: question.explanation,
+    );
   }
 
   void _resetSessionState() {

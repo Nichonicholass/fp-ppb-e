@@ -44,6 +44,18 @@ class ExplanationPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
+          if (!result.correct && result.correctAnswerLabel.isNotEmpty) ...[
+            Text(
+              'Correct answer: ${result.correctAnswerLabel}',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
           Text(
             result.explanation,
             style: GoogleFonts.inter(

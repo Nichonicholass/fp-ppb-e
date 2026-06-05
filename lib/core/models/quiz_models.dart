@@ -22,32 +22,34 @@ class QuizModule {
   factory QuizModule.fromFirestore(Map<String, dynamic> json, String docId) {
     return QuizModule(
       id: docId,
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      iconName: json['iconName'] as String? ?? 'help',
-      gradientColorsValues: (json['gradientColorsValues'] as List<dynamic>? ?? [])
-          .map((c) => (c as num).toInt())
-          .toList(),
-      lessonText: json['lessonText'] as String? ?? '',
-      keyTakeaways: (json['keyTakeaways'] as List<dynamic>? ?? []).cast<String>(),
-      sortOrder: (json['sortOrder'] as num? ?? 0).toInt(),
+      title: _stringValue(json['title']),
+      description: _stringValue(json['description']),
+      iconName: _stringValue(json['iconName'], fallback: 'help'),
+      gradientColorsValues: _intList(json['gradientColorsValues']),
+      lessonText: _stringValue(json['lessonText']),
+      keyTakeaways: _stringList(json['keyTakeaways']),
+      sortOrder: _intValue(json['sortOrder']),
     );
   }
 
   factory QuizModule.fromJson(Map<String, dynamic> json) {
     return QuizModule(
-      id: json['id'] as String? ?? '',
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      iconName: json['iconName'] as String? ?? 'help',
-      gradientColorsValues: (json['gradientColorsValues'] as List<dynamic>? ?? [])
-          .map((c) => (c as num).toInt())
-          .toList(),
-      lessonText: json['lessonText'] as String? ?? '',
-      keyTakeaways: (json['keyTakeaways'] as List<dynamic>? ?? []).cast<String>(),
-      sortOrder: (json['sortOrder'] as num? ?? 0).toInt(),
+      id: _stringValue(json['id']),
+      title: _stringValue(json['title']),
+      description: _stringValue(json['description']),
+      iconName: _stringValue(json['iconName'], fallback: 'help'),
+      gradientColorsValues: _intList(json['gradientColorsValues']),
+      lessonText: _stringValue(json['lessonText']),
+      keyTakeaways: _stringList(json['keyTakeaways']),
+      sortOrder: _intValue(json['sortOrder']),
     );
   }
+
+  bool get isValid =>
+      id.trim().isNotEmpty &&
+      title.trim().isNotEmpty &&
+      description.trim().isNotEmpty &&
+      lessonText.trim().isNotEmpty;
 
   Map<String, dynamic> toJson() {
     return {
@@ -87,26 +89,26 @@ class QuizQuestion {
   factory QuizQuestion.fromFirestore(Map<String, dynamic> json, String docId) {
     return QuizQuestion(
       id: docId,
-      question: json['question'] as String? ?? '',
-      options: (json['options'] as List<dynamic>? ?? []).cast<String>(),
-      correctIndex: json['correctIndex'] as int? ?? 0,
-      explanation: json['explanation'] as String? ?? '',
-      topic: json['topic'] as String? ?? '',
-      difficulty: json['difficulty'] as String? ?? 'beginner',
-      active: json['active'] as bool? ?? true,
+      question: _stringValue(json['question']),
+      options: _stringList(json['options']),
+      correctIndex: _intValue(json['correctIndex']),
+      explanation: _stringValue(json['explanation']),
+      topic: _stringValue(json['topic']),
+      difficulty: _stringValue(json['difficulty'], fallback: 'beginner'),
+      active: _boolValue(json['active'], fallback: true),
     );
   }
 
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
     return QuizQuestion(
-      id: json['id'] as String? ?? '',
-      question: json['question'] as String? ?? '',
-      options: (json['options'] as List<dynamic>? ?? []).cast<String>(),
-      correctIndex: json['correctIndex'] as int? ?? 0,
-      explanation: json['explanation'] as String? ?? '',
-      topic: json['topic'] as String? ?? '',
-      difficulty: json['difficulty'] as String? ?? 'beginner',
-      active: json['active'] as bool? ?? true,
+      id: _stringValue(json['id']),
+      question: _stringValue(json['question']),
+      options: _stringList(json['options']),
+      correctIndex: _intValue(json['correctIndex']),
+      explanation: _stringValue(json['explanation']),
+      topic: _stringValue(json['topic']),
+      difficulty: _stringValue(json['difficulty'], fallback: 'beginner'),
+      active: _boolValue(json['active'], fallback: true),
     );
   }
 
@@ -122,24 +124,72 @@ class QuizQuestion {
       'active': active,
     };
   }
+
+  bool get isValid =>
+      active &&
+      id.trim().isNotEmpty &&
+      question.trim().isNotEmpty &&
+      options.length >= 2 &&
+      correctIndex >= 0 &&
+      correctIndex < options.length &&
+      explanation.trim().isNotEmpty &&
+      topic.trim().isNotEmpty &&
+      difficulty.trim().isNotEmpty;
+
+  String get correctAnswerLabel =>
+      correctIndex >= 0 && correctIndex < options.length ? options[correctIndex] : '';
 }
 
 class QuizAnswerResult {
   final bool correct;
   final int correctIndex;
+  final String correctAnswerLabel;
   final String explanation;
 
   const QuizAnswerResult({
     required this.correct,
     required this.correctIndex,
+    required this.correctAnswerLabel,
     required this.explanation,
   });
 
   factory QuizAnswerResult.fromJson(Map<String, dynamic> json) {
     return QuizAnswerResult(
-      correct: json['correct'] as bool,
-      correctIndex: json['correctIndex'] as int,
-      explanation: json['explanation'] as String,
+      correct: _boolValue(json['correct']),
+      correctIndex: _intValue(json['correctIndex']),
+      correctAnswerLabel: _stringValue(json['correctAnswerLabel']),
+      explanation: _stringValue(json['explanation']),
     );
   }
+}
+
+String _stringValue(Object? value, {String fallback = ''}) {
+  if (value is String) return value.trim();
+  return fallback;
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) return const [];
+
+  return value
+      .whereType<String>()
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
+}
+
+List<int> _intList(Object? value) {
+  if (value is! List) return const [];
+
+  return value.whereType<num>().map((item) => item.toInt()).toList();
+}
+
+int _intValue(Object? value) {
+  if (value is num) return value.toInt();
+  return 0;
+}
+
+bool _boolValue(Object? value, {bool fallback = false}) {
+  if (value is bool) return value;
+  return fallback;
 }

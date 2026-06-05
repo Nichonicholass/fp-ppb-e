@@ -16,14 +16,20 @@ class QuizService {
         .get();
 
     if (snapshot.docs.isEmpty) {
-      return QuizData.defaultQuestions;
+      return QuizData.defaultQuestions.where((q) => q.isValid).toList();
     }
 
-    return snapshot.docs
+    final questions = snapshot.docs
         .map((doc) => QuizQuestion.fromFirestore(doc.data(), doc.id))
+        .where((question) => question.isValid)
         .toList();
-  }
 
+    if (questions.isEmpty) {
+      return QuizData.defaultQuestions.where((q) => q.isValid).toList();
+    }
+
+    return questions;
+  }
 
   Future<List<QuizModule>> fetchModules() async {
     final snapshot = await _db
@@ -32,11 +38,18 @@ class QuizService {
         .get();
 
     if (snapshot.docs.isEmpty) {
-      return QuizData.defaultModules;
+      return QuizData.defaultModules.where((m) => m.isValid).toList();
     }
 
-    return snapshot.docs
+    final modules = snapshot.docs
         .map((doc) => QuizModule.fromFirestore(doc.data(), doc.id))
+        .where((module) => module.isValid)
         .toList();
+
+    if (modules.isEmpty) {
+      return QuizData.defaultModules.where((m) => m.isValid).toList();
+    }
+
+    return modules;
   }
 }

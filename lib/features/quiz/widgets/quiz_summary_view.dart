@@ -18,6 +18,7 @@ class QuizSummaryView extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final reward = quiz.rewardAmount;
+    final maxReward = quiz.maxRewardAmount;
 
     final isCompleted = portfolio.isModuleCompleted(sessionId);
 
@@ -57,11 +58,20 @@ class QuizSummaryView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'First-time Reward: \$${(quiz.totalQuestions * 100).toStringAsFixed(0)}',
+                'Earned Reward: \$${reward.toStringAsFixed(0)} Coins',
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Max Reward: \$${maxReward.toStringAsFixed(0)} Coins',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.76),
                 ),
               ),
             ],
@@ -79,7 +89,7 @@ class QuizSummaryView extends StatelessWidget {
           const _ClaimStatusPanel(
             icon: Icons.event_busy_rounded,
             title: 'Reward already claimed',
-            message: 'You have already collected the first-time reward for this module. You can keep practicing to test your knowledge!',
+            message: 'You have already collected the module reward. You can keep practicing to test your knowledge!',
             color: AppTheme.textSecondary,
           )
         else if (reward <= 0)
@@ -102,6 +112,7 @@ class QuizSummaryView extends StatelessWidget {
                           moduleId: sessionId,
                           score: quiz.score,
                           totalQuestions: quiz.totalQuestions,
+                          rewardPerCorrect: QuizProvider.rewardPerCorrectAnswer,
                         ),
                       )
                   : null,
