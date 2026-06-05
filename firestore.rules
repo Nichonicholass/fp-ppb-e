@@ -17,9 +17,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Public read/write for quiz questions (write allowed for seeding script)
     match /questions/{document} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false; // Use bin/seed_questions.dart to update
+    }
+
+    match /modules/{document} {
+      allow read: if true;
+      allow write: if false; // Use bin/seed_questions.dart to update
     }
   }
 }

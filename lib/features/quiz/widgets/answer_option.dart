@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/services/quiz_service.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:fintell/core/models/quiz_models.dart';
+import 'package:fintell/core/theme/app_theme.dart';
 
 class AnswerOption extends StatefulWidget {
   final String label;

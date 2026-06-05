@@ -24,6 +24,7 @@ class _QuizPageState extends State<QuizPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<PortfolioProvider>().checkTodayRewardClaimed();
+        context.read<QuizProvider>().loadModules();
       }
     });
   }

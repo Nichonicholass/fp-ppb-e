@@ -2,196 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/providers/portfolio_provider.dart';
-import '../../../shared/providers/quiz_provider.dart';
-
-class QuizModule {
-  final String id;
-  final String title;
-  final String description;
-  final IconData icon;
-  final List<Color> gradientColors;
-  final String lessonText;
-  final List<String> keyTakeaways;
-
-  const QuizModule({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.gradientColors,
-    required this.lessonText,
-    required this.keyTakeaways,
-  });
-}
+import 'package:fintell/core/theme/app_theme.dart';
+import 'package:fintell/core/models/quiz_models.dart';
+import 'package:fintell/core/models/quiz_models_flutter_ext.dart';
+import 'package:fintell/shared/providers/portfolio_provider.dart';
+import 'package:fintell/shared/providers/quiz_provider.dart';
 
 class QuizModulesHub extends StatelessWidget {
   const QuizModulesHub({super.key});
 
-  static const List<QuizModule> modules = [
-    QuizModule(
-      id: 'budgeting',
-      title: 'Budgeting Basics',
-      description: 'Learn how to plan and track your income and expenses to achieve financial stability.',
-      icon: Icons.account_balance_wallet_rounded,
-      gradientColors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
-      lessonText: 'A budget is a roadmap for your money. By using rules like the 50/30/20 rule (50% needs, 30% wants, 20% savings), you ensure that your essential expenses are covered while still building your savings and enjoying your life. Tracking every expense helps prevent overspending.',
-      keyTakeaways: [
-        'A budget tracks income vs. expenses.',
-        'The 50/30/20 rule divides money into Needs, Wants, and Savings.',
-        'Tracking prevents accidental overspending.'
-      ],
-    ),
-    QuizModule(
-      id: 'saving',
-      title: 'The Art of Saving',
-      description: 'Build a solid emergency fund and secure your financial safety net.',
-      icon: Icons.savings_rounded,
-      gradientColors: [Color(0xFF10B981), Color(0xFF059669)],
-      lessonText: 'Saving is about keeping money safe for future needs. An emergency fund is the cornerstone of personal finance, representing 3 to 6 months of living expenses. It protects you from high-interest debt when unexpected events, like medical emergencies or job loss, happen.',
-      keyTakeaways: [
-        'An emergency fund is a financial safety net.',
-        'Save 3 to 6 months of living expenses.',
-        'Keeps you out of debt when emergencies strike.'
-      ],
-    ),
-    QuizModule(
-      id: 'stock_market',
-      title: 'Stock Market Intro',
-      description: 'Demystify shares, corporate ownership, and how public listings work.',
-      icon: Icons.show_chart_rounded,
-      gradientColors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-      lessonText: 'Buying a stock means purchasing a tiny fraction of ownership in a company. When the company grows and earns profits, the value of your shares increases, and they may pay out dividends. Companies go public through an Initial Public Offering (IPO) to raise capital from everyday investors.',
-      keyTakeaways: [
-        'Stocks represent partial company ownership.',
-        'Dividends are payouts of company profits.',
-        'IPOs let companies sell shares to the public.'
-      ],
-    ),
-    QuizModule(
-      id: 'investing_basics',
-      title: 'Investing 101',
-      description: 'Differentiate saving from investing and understand asset classes.',
-      icon: Icons.trending_up_rounded,
-      gradientColors: [Color(0xFFEC4899), Color(0xFFDB2777)],
-      lessonText: 'While saving preserves capital with low risk, investing aims to build long-term wealth by purchasing assets like stocks, bonds, or real estate. Investing involves higher risk and volatility, but historically delivers much higher returns than a standard bank savings account.',
-      keyTakeaways: [
-        'Saving preserves cash; investing grows wealth.',
-        'Investing involves risk and market fluctuations.',
-        'Stocks and real estate are common investment assets.'
-      ],
-    ),
-    QuizModule(
-      id: 'risk_return',
-      title: 'Risk & Return',
-      description: 'Learn the core balance between financial risk and potential rewards.',
-      icon: Icons.balance_rounded,
-      gradientColors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-      lessonText: 'The risk-return tradeoff is a fundamental financial principle: higher potential returns always require accepting higher risk of loss. Low-risk investments like government bonds offer safety but lower returns, whereas stocks offer higher potential gains along with higher price volatility.',
-      keyTakeaways: [
-        'Risk and return are directly related.',
-        'High potential return requires high risk tolerance.',
-        'Bonds are lower risk; stocks are higher risk.'
-      ],
-    ),
-    QuizModule(
-      id: 'diversification',
-      title: 'Diversification',
-      description: 'Spread your eggs across multiple baskets to mitigate unsystematic risk.',
-      icon: Icons.grid_view_rounded,
-      gradientColors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
-      lessonText: 'Diversification is the practice of spreading your investments across various assets, sectors, and geographic regions. By doing so, a decline in one single company or sector won\'t devastate your entire portfolio. It is the most effective way to reduce company-specific (unsystematic) risk.',
-      keyTakeaways: [
-        'Diversification reduces company-specific risk.',
-        'Avoid putting all your funds in one place.',
-        'Spreads capital across assets and industries.'
-      ],
-    ),
-    QuizModule(
-      id: 'inflation',
-      title: 'Inflation Explained',
-      description: 'See how inflation erodes purchasing power and how to hedge against it.',
-      icon: Icons.toll_rounded,
-      gradientColors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-      lessonText: 'Inflation is the gradual increase in prices over time, which reduces the purchasing power of your money. If your savings interest rate is lower than inflation, you are effectively losing money. Investing in assets like equities and real estate has historically been an excellent inflation hedge.',
-      keyTakeaways: [
-        'Inflation erodes the purchasing power of money.',
-        'Cash in savings accounts loses value to inflation.',
-        'Stocks and real estate historically beat inflation.'
-      ],
-    ),
-    QuizModule(
-      id: 'compound_interest',
-      title: 'Compound Interest',
-      description: 'Discover the exponential power of earning interest on your interest.',
-      icon: Icons.auto_awesome_rounded,
-      gradientColors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
-      lessonText: 'Compound interest is when you earn interest on both your original principal and the interest accumulated over time. This creates a snowball effect where your wealth grows exponentially. The Rule of 72 helps estimate doubling time: divide 72 by your annual interest rate.',
-      keyTakeaways: [
-        'Earn interest on principal AND prior interest.',
-        'Creates exponential wealth growth over time.',
-        'The Rule of 72 estimates investment doubling time.'
-      ],
-    ),
-    QuizModule(
-      id: 'pe_ratio',
-      title: 'Valuation & P/E',
-      description: 'Learn how to evaluate if a stock is cheap or expensive.',
-      icon: Icons.analytics_rounded,
-      gradientColors: [Color(0xFF6B7280), Color(0xFF4B5563)],
-      lessonText: 'The Price-to-Earnings (P/E) ratio compares a company\'s stock price to its earnings per share. A high P/E ratio indicates that investors expect high growth in the future or that the stock is currently overvalued. A low P/E can mean a company is undervalued or in trouble.',
-      keyTakeaways: [
-        'P/E compares stock price to its earnings.',
-        'High P/E suggests high growth or overvaluation.',
-        'Low P/E can mean undervaluation or distress.'
-      ],
-    ),
-    QuizModule(
-      id: 'roe',
-      title: 'ROE Profitability',
-      description: 'Analyze how efficiently a company turns equity into earnings.',
-      icon: Icons.pie_chart_rounded,
-      gradientColors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-      lessonText: 'Return on Equity (ROE) measures a corporation\'s profitability by showing how much profit a company generates with the money shareholders have invested. An ROE of 15-20% is generally considered strong, indicating highly efficient corporate management.',
-      keyTakeaways: [
-        'ROE measures efficiency of shareholder capital usage.',
-        'Calculated as Net Income divided by Equity.',
-        'Higher ROE signifies superior profit generation.'
-      ],
-    ),
-    QuizModule(
-      id: 'mutual_funds',
-      title: 'Mutual Funds',
-      description: 'Explore pooled investment vehicles managed by finance professionals.',
-      icon: Icons.groups_rounded,
-      gradientColors: [Color(0xFF78716C), Color(0xFF57534E)],
-      lessonText: 'A mutual fund pools money from many individual investors to purchase a broad, diversified portfolio of stocks, bonds, or other securities. These portfolios are managed by professional fund managers, making them an excellent hands-off choice for beginners seeking instant diversification.',
-      keyTakeaways: [
-        'Mutual funds pool money from multiple investors.',
-        'Managed by financial professionals.',
-        'Provides instant, affordable diversification.'
-      ],
-    ),
-    QuizModule(
-      id: 'cryptocurrency',
-      title: 'Crypto & Blockchain',
-      description: 'Understand digital assets and decentralized ledger technology.',
-      icon: Icons.currency_bitcoin_rounded,
-      gradientColors: [Color(0xFF84CC16), Color(0xFF65A30D)],
-      lessonText: 'Cryptocurrencies are digital, decentralized currencies built on blockchain technology. Unlike traditional money, they are not issued or backed by any government or central bank. They offer high potential returns but come with extreme volatility and unique security risks.',
-      keyTakeaways: [
-        'Decentralized digital currencies.',
-        'Powered securely by blockchain technology.',
-        'Carries extreme price volatility and unique risks.'
-      ],
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final portfolio = context.watch<PortfolioProvider>();
-    final completedCount = portfolio.completedModuleIds.length;
+    final quizProvider = context.watch<QuizProvider>();
+    final modules = quizProvider.modules;
+    final loadingModules = quizProvider.loadingModules;
+
+    if (loadingModules) {
+      return const SizedBox(
+        height: 300,
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (modules.isEmpty) {
+      return Container(
+        height: 200,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.school_rounded, size: 48, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+            const SizedBox(height: 12),
+            Text(
+              'No modules available',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final completedCount = modules.where((m) => portfolio.isModuleCompleted(m.id)).length;
     final totalModules = modules.length;
     final progressPercentage = totalModules > 0 ? completedCount / totalModules : 0.0;
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/services/quiz_service.dart';
+import 'package:fintell/core/services/quiz_service.dart';
+import 'package:fintell/core/models/quiz_models.dart';
 
 class QuizProvider extends ChangeNotifier {
   static const String defaultDifficulty = 'beginner';
@@ -9,6 +10,7 @@ class QuizProvider extends ChangeNotifier {
   final QuizService _service;
 
   bool _loading = false;
+  bool _loadingModules = false;
   bool _submitting = false;
   bool _claimingReward = false;
   bool _rewardClaimed = false;
@@ -18,18 +20,39 @@ class QuizProvider extends ChangeNotifier {
   int _currentIndex = 0;
   int _score = 0;
   final List<QuizQuestion> _questions = [];
+  final List<QuizModule> _modules = [];
   final Map<String, int> _selectedAnswers = {};
   final Map<String, QuizAnswerResult> _answerResults = {};
 
   QuizProvider({QuizService? service}) : _service = service ?? QuizService();
 
   bool get loading => _loading;
+  bool get loadingModules => _loadingModules;
   bool get submitting => _submitting;
   bool get claimingReward => _claimingReward;
   bool get rewardClaimed => _rewardClaimed;
   bool get rewardAlreadyClaimed => _rewardAlreadyClaimed;
   String? get error => _error;
   String? get sessionId => _sessionId; // Holds the topic / module name
+  List<QuizModule> get modules => List.unmodifiable(_modules);
+
+  Future<void> loadModules() async {
+    _loadingModules = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final fetched = await _service.fetchModules();
+      _modules
+        ..clear()
+        ..addAll(fetched);
+    } catch (e) {
+      _error = _messageFromError(e);
+    } finally {
+      _loadingModules = false;
+      notifyListeners();
+    }
+  }
   int get currentIndex => _currentIndex;
   int get score => _score;
   int get totalQuestions => _questions.length;
@@ -77,9 +100,6 @@ class QuizProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Run local seeding check quietly first
-      await _service.seedQuestionsLocal();
-
       final allQuestions = await _service.fetchQuestions();
       final filtered = topic != null
           ? allQuestions.where((q) => q.topic == topic).toList()
