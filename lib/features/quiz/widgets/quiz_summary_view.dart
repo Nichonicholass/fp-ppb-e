@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,8 @@ class _QuizSummaryViewState extends State<QuizSummaryView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _chestController;
   late final Animation<double> _chestFloat;
+  late final ConfettiController _confettiController;
+  OverlayEntry? _confettiOverlayEntry;
 
   @override
   void initState() {
@@ -30,11 +33,87 @@ class _QuizSummaryViewState extends State<QuizSummaryView>
     _chestFloat = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _chestController, curve: Curves.easeInOut),
     );
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 3),
+    );
+
+    final quiz = context.read<QuizProvider>();
+    if (quiz.score > 0) {
+      _confettiController.play();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showConfettiOverlay();
+        }
+      });
+    }
+  }
+
+  void _showConfettiOverlay() {
+    _confettiOverlayEntry = OverlayEntry(
+      builder: (context) => IgnorePointer(
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: -math.pi / 4,
+                blastDirectionality: BlastDirectionality.directional,
+                emissionFrequency: 0.03,
+                numberOfParticles: 5,
+                maxBlastForce: 25,
+                minBlastForce: 10,
+                minimumSize: const Size(10, 8),
+                maximumSize: const Size(14, 12),
+                shouldLoop: false,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                  Colors.purple,
+                  Colors.amber,
+                ],
+                gravity: 0.2,
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: -3 * math.pi / 4,
+                blastDirectionality: BlastDirectionality.directional,
+                emissionFrequency: 0.03,
+                numberOfParticles: 5,
+                maxBlastForce: 25,
+                minBlastForce: 10,
+                minimumSize: const Size(12, 10),
+                maximumSize: const Size(16, 14),
+                shouldLoop: false,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                  Colors.purple,
+                  Colors.amber,
+                ],
+                gravity: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_confettiOverlayEntry!);
   }
 
   @override
   void dispose() {
     _chestController.dispose();
+    _confettiController.dispose();
+    _confettiOverlayEntry?.remove();
+    _confettiOverlayEntry = null;
     super.dispose();
   }
 
