@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -6,8 +8,35 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/portfolio_provider.dart';
 import '../../../shared/providers/quiz_provider.dart';
 
-class QuizSummaryView extends StatelessWidget {
+class QuizSummaryView extends StatefulWidget {
   const QuizSummaryView({super.key});
+
+  @override
+  State<QuizSummaryView> createState() => _QuizSummaryViewState();
+}
+
+class _QuizSummaryViewState extends State<QuizSummaryView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _chestController;
+  late final Animation<double> _chestFloat;
+
+  @override
+  void initState() {
+    super.initState();
+    _chestController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _chestFloat = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _chestController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _chestController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,15 +54,61 @@ class QuizSummaryView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Center(
+          child: SizedBox(
+            height: 190,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/treasure-chest-background.png',
+                      width: 160,
+                      height: 160,
+                      fit: BoxFit.contain,
+                    ),
+                    AnimatedBuilder(
+                      animation: _chestFloat,
+                      builder: (context, child) {
+                        final offset = -10 * math.sin(_chestFloat.value * math.pi);
+                        return Transform.translate(
+                          offset: Offset(0, offset),
+                          child: child,
+                        );
+                      },
+                      child: Image.asset(
+                        'assets/treasure-chest.png',
+                        width: 90,
+                        height: 90,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  reward > 0 && !(quiz.rewardAlreadyClaimed || isCompleted)
+                      ? 'Reward Waiting!'
+                      : 'Quiz Complete!',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Score card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF10B981), Color(0xFF059669)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: const Color(0xFF10B981),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(

@@ -159,7 +159,6 @@ class QuizModulesHub extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        // 2. Bento Grid of Modules
         LayoutBuilder(
           builder: (context, constraints) {
             final columnCount = _gridColumnCount(constraints.maxWidth);
