@@ -11,5 +11,10 @@ service cloud.firestore {
     match /users/{userId}/portfolio/{document} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Each user can only read/write their own AI chat history
+    match /users/{userId}/ai_chat/{document} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }

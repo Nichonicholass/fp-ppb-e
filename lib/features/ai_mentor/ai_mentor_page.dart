@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../shared/providers/ai_mentor_provider.dart';
+import '../../shared/providers/portfolio_provider.dart';
 
 class AiMentorPage extends StatefulWidget {
   const AiMentorPage({super.key});
@@ -13,33 +16,31 @@ class AiMentorPage extends StatefulWidget {
 class _AiMentorPageState extends State<AiMentorPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = List.from(AppData.chatHistory);
-  bool _isBotTyping = false;
 
   void _sendMessage([String? text]) {
     final content = (text ?? _controller.text).trim();
     if (content.isEmpty) return;
-
-    setState(() {
-      _messages.add(ChatMessage(text: content, isUser: true, time: _nowTime()));
-      _isBotTyping = true;
-    });
     _controller.clear();
-    _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (!mounted) return;
-      setState(() {
-        _isBotTyping = false;
-        _messages.add(ChatMessage(
-          text:
-              'Great question about "$content"! 📊\n\nAs your AI financial mentor, I\'m here to guide you through your investing journey. In a fully connected version, I\'d analyze your portfolio, pull live market data, and give you personalized insights.\n\nFor now, explore the Market and Portfolio tabs to see your simulated holdings. Knowledge is your best investment! 💡',
-          isUser: false,
-          time: _nowTime(),
-        ));
-      });
-      _scrollToBottom();
-    });
+    final portfolio = context.read<PortfolioProvider>();
+    final portfolioContext = _buildPortfolioContext(portfolio);
+
+    context.read<AiMentorProvider>().sendMessage(
+          content,
+          portfolioContext: portfolioContext.isNotEmpty ? portfolioContext : null,
+        );
+
+    _scrollToBottom();
+  }
+
+  String _buildPortfolioContext(PortfolioProvider p) {
+    if (p.holdings.isEmpty) return '';
+    final holdingsSummary = p.holdings
+        .map((h) => '${h.stock.ticker} x${h.shares}')
+        .join(', ');
+    return 'Total portfolio value: \$${p.portfolioValue.toStringAsFixed(2)}, '
+        'Cash balance: \$${p.balance.toStringAsFixed(2)}, '
+        'Holdings: $holdingsSummary';
   }
 
   void _scrollToBottom() {
@@ -54,11 +55,6 @@ class _AiMentorPageState extends State<AiMentorPage> {
     });
   }
 
-  String _nowTime() {
-    final now = DateTime.now();
-    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   void dispose() {
     _controller.dispose();
@@ -68,6 +64,10 @@ class _AiMentorPageState extends State<AiMentorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final mentor = context.watch<AiMentorProvider>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -106,20 +106,34 @@ class _AiMentorPageState extends State<AiMentorPage> {
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.more_vert_rounded), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded),
+            tooltip: 'Clear chat',
+            onPressed: () => context.read<AiMentorProvider>().clearHistory(),
+          ),
         ],
       ),
       body: Column(
         children: [
           _SuggestedQuestions(onTap: _sendMessage),
+          if (mentor.error != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.red.shade50,
+              child: Text(
+                mentor.error!,
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700),
+              ),
+            ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              itemCount: _messages.length + (_isBotTyping ? 1 : 0),
+              itemCount: mentor.messages.length + (mentor.isLoading ? 1 : 0),
               itemBuilder: (ctx, i) {
-                if (i == _messages.length) return const _TypingIndicator();
-                return _ChatBubble(message: _messages[i]);
+                if (i == mentor.messages.length) return const _TypingIndicator();
+                return _ChatBubble(message: mentor.messages[i]);
               },
             ),
           ),
