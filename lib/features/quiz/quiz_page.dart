@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/providers/portfolio_provider.dart';
 import '../../shared/providers/quiz_provider.dart';
+import '../../shared/providers/nav_provider.dart';
 import 'widgets/error_banner.dart';
 import 'widgets/question_view.dart';
 import 'widgets/quiz_summary_view.dart';
@@ -85,14 +86,19 @@ class _QuizPageState extends State<QuizPage> {
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavProvider>();
     final quiz = context.watch<QuizProvider>();
     final isQuizInProgress = quiz.hasSession && !quiz.isFinished;
+    final isQuizTabActive = nav.currentIndex == 4;
+    final shouldBlockPop = isQuizInProgress && isQuizTabActive;
 
     return PopScope(
-      canPop: !isQuizInProgress,
+      canPop: !shouldBlockPop,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        _showExitConfirmation(context);
+        if (shouldBlockPop) {
+          _showExitConfirmation(context);
+        }
       },
       child: Scaffold(
         appBar: AppBar(

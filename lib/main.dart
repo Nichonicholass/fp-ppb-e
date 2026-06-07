@@ -94,12 +94,15 @@ class MainShell extends StatelessWidget {
     final nav = context.watch<NavProvider>();
     final quiz = context.watch<QuizProvider>();
     final isQuizInProgress = quiz.hasSession && !quiz.isFinished;
+    final isQuizTabActive = nav.currentIndex == 4;
+    final shouldHideBottomNav = isQuizInProgress && isQuizTabActive;
+
     return Scaffold(
       body: IndexedStack(
         index: nav.currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: isQuizInProgress ? null : const _FintellBottomNav(),
+      bottomNavigationBar: shouldHideBottomNav ? null : const _FintellBottomNav(),
     );
   }
 }
