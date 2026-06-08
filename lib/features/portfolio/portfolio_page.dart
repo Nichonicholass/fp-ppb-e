@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../shared/providers/portfolio_provider.dart';
+import 'transaction_detail_page.dart';
 
 class PortfolioPage extends StatelessWidget {
   const PortfolioPage({super.key});
@@ -13,12 +14,6 @@ class PortfolioPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Portfolio'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_horiz_rounded),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -163,11 +158,40 @@ class _BalanceStat extends StatelessWidget {
   }
 }
 
-class _PerformanceChart extends StatelessWidget {
+class _PerformanceChart extends StatefulWidget {
   const _PerformanceChart();
 
   @override
+  State<_PerformanceChart> createState() => _PerformanceChartState();
+}
+
+class _PerformanceChartState extends State<_PerformanceChart> {
+  String _selected = '1M';
+
+  @override
   Widget build(BuildContext context) {
+    final portfolio = context.watch<PortfolioProvider>();
+    final now = DateTime.now();
+
+    DateTime since;
+    if (_selected == '1W') {
+      since = now.subtract(const Duration(days: 7));
+    } else if (_selected == '3M') {
+      since = DateTime(now.year, now.month - 3, now.day);
+    } else if (_selected == '1Y') {
+      since = DateTime(now.year - 1, now.month, now.day);
+    } else {
+      since = DateTime(now.year, now.month - 1, now.day);
+    }
+
+    final raw = portfolio.getTimelinePoints(since);
+    final minV = raw.reduce((a, b) => a < b ? a : b);
+    final maxV = raw.reduce((a, b) => a > b ? a : b);
+    final range = maxV - minV;
+    final normalized = range == 0
+        ? List<double>.filled(raw.length, 0.5)
+        : raw.map((v) => (v - minV) / range).toList();
+
     return Container(
       width: double.infinity,
       height: 185,
@@ -191,14 +215,17 @@ class _PerformanceChart extends StatelessWidget {
               ),
               const Spacer(),
               ...['1W', '1M', '3M', '1Y'].map(
-                (t) => _TimeFilter(label: t, isSelected: t == '1M'),
+                (t) => GestureDetector(
+                  onTap: () => setState(() => _selected = t),
+                  child: _TimeFilter(label: t, isSelected: t == _selected),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Expanded(
             child: CustomPaint(
-              painter: _LineChartPainter(),
+              painter: _LineChartPainter(points: normalized),
               child: const SizedBox.expand(),
             ),
           ),
@@ -235,9 +262,13 @@ class _TimeFilter extends StatelessWidget {
 }
 
 class _LineChartPainter extends CustomPainter {
+  final List<double> points;
+
+  _LineChartPainter({required this.points});
+
   @override
   void paint(Canvas canvas, Size size) {
-    const points = [0.55, 0.50, 0.62, 0.54, 0.66, 0.58, 0.72, 0.63, 0.78, 0.70, 0.85, 0.80, 0.92];
+    if (points.length < 2) return;
 
     final linePaint = Paint()
       ..color = AppTheme.primary
@@ -276,21 +307,27 @@ class _LineChartPainter extends CustomPainter {
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(linePath, linePaint);
 
-    final dotPaint = Paint()
-      ..color = AppTheme.primary
-      ..style = PaintingStyle.fill;
     final lastX = size.width;
     final lastY = size.height - (points.last * size.height * 0.9) - size.height * 0.05;
-    canvas.drawCircle(Offset(lastX, lastY), 4, dotPaint);
-    canvas.drawCircle(Offset(lastX, lastY), 4,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
+    canvas.drawCircle(
+      Offset(lastX, lastY),
+      4,
+      Paint()
+        ..color = AppTheme.primary
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      Offset(lastX, lastY),
+      4,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _LineChartPainter old) => old.points != points;
 }
 
 class _HoldingTile extends StatelessWidget {
@@ -784,71 +821,89 @@ class _TransactionRow extends StatelessWidget {
     final d = tx.timestamp;
     final dateStr = '${months[d.month - 1]} ${d.day}, ${d.year}';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              isBuy ? 'BUY' : 'SELL',
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: badgeColor,
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TransactionDetailPage(transaction: tx),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                isBuy ? 'BUY' : 'SELL',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: badgeColor,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tx.stock.ticker,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    dateStr,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
               children: [
-                Text(
-                  tx.stock.ticker,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '\$${tx.total.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${tx.shares} sh @ \$${tx.price.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  dateStr,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: AppTheme.textTertiary,
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '\$${tx.total.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${tx.shares} sh @ \$${tx.price.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
