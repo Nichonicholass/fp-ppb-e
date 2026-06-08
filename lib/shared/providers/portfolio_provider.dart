@@ -352,6 +352,62 @@ class PortfolioProvider extends ChangeNotifier {
         type: TransactionType.values.byName((m['type'] as String?) ?? 'buy'),
       );
 
+  /// Reconstructs portfolio value snapshots from [since] to now.
+  /// Returns raw dollar values: [value_at_since, ...per_tx..., current_value].
+  List<double> getTimelinePoints(DateTime since) {
+    final sorted = List<Transaction>.from(_transactions)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    double bal = AppData.initialBalance;
+    final Map<String, int> shareCount = {};
+    final Map<String, double> avgPrices = {};
+
+    void applyTx(Transaction tx) {
+      if (tx.type == TransactionType.buy) {
+        bal -= tx.total;
+        final cur = shareCount[tx.stock.ticker] ?? 0;
+        final curAvg = avgPrices[tx.stock.ticker] ?? 0.0;
+        final newShares = cur + tx.shares;
+        avgPrices[tx.stock.ticker] = (curAvg * cur + tx.total) / newShares;
+        shareCount[tx.stock.ticker] = newShares;
+      } else {
+        bal += tx.total;
+        final cur = shareCount[tx.stock.ticker] ?? 0;
+        final remaining = cur - tx.shares;
+        if (remaining <= 0) {
+          shareCount.remove(tx.stock.ticker);
+          avgPrices.remove(tx.stock.ticker);
+        } else {
+          shareCount[tx.stock.ticker] = remaining;
+        }
+      }
+    }
+
+    double holdingsVal() {
+      double v = 0;
+      for (final ticker in shareCount.keys) {
+        v += (avgPrices[ticker] ?? 0) * (shareCount[ticker] ?? 0);
+      }
+      return v;
+    }
+
+    for (final tx in sorted) {
+      if (tx.timestamp.isBefore(since)) applyTx(tx);
+    }
+
+    final values = <double>[bal + holdingsVal()];
+
+    for (final tx in sorted) {
+      if (!tx.timestamp.isBefore(since)) {
+        applyTx(tx);
+        values.add(bal + holdingsVal());
+      }
+    }
+
+    values.add(_balance + portfolioValue);
+    return values;
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();

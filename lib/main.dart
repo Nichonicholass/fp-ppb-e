@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers/nav_provider.dart';
@@ -12,6 +13,7 @@ import 'shared/providers/market_provider.dart';
 import 'shared/providers/portfolio_provider.dart';
 import 'shared/providers/quiz_provider.dart';
 import 'shared/providers/watchlist_provider.dart';
+import 'shared/providers/ai_mentor_provider.dart';
 import 'features/auth/auth_page.dart';
 import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
@@ -22,6 +24,7 @@ import 'features/ai_mentor/ai_mentor_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -46,6 +49,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PortfolioProvider()),
         ChangeNotifierProvider(create: (_) => QuizProvider()),
         ChangeNotifierProvider(create: (_) => WatchlistProvider()),
+        ChangeNotifierProvider(create: (_) => AiMentorProvider()),
       ],
       child: const FintellApp(),
     ),
