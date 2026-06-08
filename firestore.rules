@@ -12,6 +12,21 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Each user can only read/write their own quiz reward claims
+    match /users/{userId}/quizRewards/{document} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /questions/{document} {
+      allow read: if true;
+      allow write: if false; // Use bin/seed_questions.dart to update
+    }
+
+    match /modules/{document} {
+      allow read: if true;
+      allow write: if false; // Use bin/seed_questions.dart to update
+    }
+
     // Each user can only read/write their own AI chat history
     match /users/{userId}/ai_chat/{document} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

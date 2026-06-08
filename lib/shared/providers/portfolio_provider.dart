@@ -11,13 +11,19 @@ class PortfolioProvider extends ChangeNotifier {
   String? _userId;
   bool _loading = false;
   double _balance = AppData.initialBalance;
+  bool _todayRewardClaimed = false;
+  final Set<String> _completedModuleIds = {};
   final List<OwnedStock> _holdings = [];
   final List<Transaction> _transactions = [];
 
   bool get loading => _loading;
   double get balance => _balance;
+  bool get todayRewardClaimed => _todayRewardClaimed;
+  Set<String> get completedModuleIds => _completedModuleIds;
   List<OwnedStock> get holdings => List.unmodifiable(_holdings);
   List<Transaction> get transactions => List.unmodifiable(_transactions);
+
+  bool isModuleCompleted(String moduleId) => _completedModuleIds.contains(moduleId);
 
   double get totalInvested => _holdings.fold(0.0, (acc, h) => acc + h.costBasis);
   double get portfolioValue => _holdings.fold(0.0, (acc, h) => acc + h.currentValue);
@@ -41,6 +47,8 @@ class PortfolioProvider extends ChangeNotifier {
     _balance = AppData.initialBalance;
     _holdings.clear();
     _transactions.clear();
+    _completedModuleIds.clear();
+    _todayRewardClaimed = false;
     _loading = false;
     notifyListeners();
   }
@@ -57,6 +65,17 @@ class PortfolioProvider extends ChangeNotifier {
           .collection('portfolio')
           .doc('data')
           .get();
+
+      // Load all completed quizzes
+      final rewardsSnap = await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('quizRewards')
+          .get();
+      _completedModuleIds.clear();
+      for (final doc in rewardsSnap.docs) {
+        _completedModuleIds.add(doc.id);
+      }
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -76,6 +95,22 @@ class PortfolioProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> checkTodayRewardClaimed() async {
+    if (_userId == null) return;
+    try {
+      final rewardsSnap = await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('quizRewards')
+          .get();
+      _completedModuleIds.clear();
+      for (final doc in rewardsSnap.docs) {
+        _completedModuleIds.add(doc.id);
+      }
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> _saveToFirestore() async {
@@ -156,6 +191,97 @@ class PortfolioProvider extends ChangeNotifier {
 
     notifyListeners();
     _saveToFirestore();
+  }
+
+  Future<bool> claimQuizReward({
+    required String sessionId,
+    required int score,
+    required int totalQuestions,
+    double rewardPerCorrect = 100,
+  }) async {
+    return claimModuleReward(
+      moduleId: sessionId,
+      score: score,
+      totalQuestions: totalQuestions,
+      rewardPerCorrect: rewardPerCorrect,
+    );
+  }
+
+  Future<bool> claimModuleReward({
+    required String moduleId,
+    required int score,
+    required int totalQuestions,
+    double rewardPerCorrect = 100,
+  }) async {
+    final userId = _userId;
+    if (userId == null) {
+      throw Exception('Please sign in to claim quiz rewards.');
+    }
+    if (totalQuestions <= 0) {
+      throw Exception('Quiz has no questions.');
+    }
+
+    final normalizedScore = score.clamp(0, totalQuestions).toInt();
+    final rewardAmount = normalizedScore * rewardPerCorrect;
+    if (rewardAmount <= 0) return false;
+
+    final rewardRef = _db
+        .collection('users')
+        .doc(userId)
+        .collection('quizRewards')
+        .doc(moduleId);
+    final portfolioRef = _db
+        .collection('users')
+        .doc(userId)
+        .collection('portfolio')
+        .doc('data');
+
+    final result = await _db.runTransaction<_QuizRewardTransactionResult>((tx) async {
+      final rewardSnap = await tx.get(rewardRef);
+      if (rewardSnap.exists) {
+        return _QuizRewardTransactionResult(
+          claimed: false,
+          balance: _balance,
+        );
+      }
+
+      final portfolioSnap = await tx.get(portfolioRef);
+      final currentBalance = portfolioSnap.exists
+          ? ((portfolioSnap.data()?['balance'] as num?)?.toDouble() ??
+              AppData.initialBalance)
+          : AppData.initialBalance;
+      final newBalance = currentBalance + rewardAmount;
+
+      tx.set(
+        portfolioRef,
+        {
+          'balance': newBalance,
+          if (!portfolioSnap.exists) 'holdings': <Map<String, dynamic>>[],
+          if (!portfolioSnap.exists) 'transactions': <Map<String, dynamic>>[],
+        },
+        SetOptions(merge: true),
+      );
+      tx.set(rewardRef, {
+        'claimedAt': FieldValue.serverTimestamp(),
+        'score': normalizedScore,
+        'totalQuestions': totalQuestions,
+        'rewardAmount': rewardAmount,
+        'moduleId': moduleId,
+      });
+
+      return _QuizRewardTransactionResult(
+        claimed: true,
+        balance: newBalance,
+      );
+    });
+
+    if (result.claimed) {
+      _balance = result.balance;
+      _completedModuleIds.add(moduleId);
+      notifyListeners();
+    }
+
+    return result.claimed;
   }
 
   // --- Serialization helpers ---
@@ -287,4 +413,14 @@ class PortfolioProvider extends ChangeNotifier {
     _authSub?.cancel();
     super.dispose();
   }
+}
+
+class _QuizRewardTransactionResult {
+  final bool claimed;
+  final double balance;
+
+  const _QuizRewardTransactionResult({
+    required this.claimed,
+    required this.balance,
+  });
 }

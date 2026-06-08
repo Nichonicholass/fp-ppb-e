@@ -11,6 +11,7 @@ import 'shared/providers/nav_provider.dart';
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/market_provider.dart';
 import 'shared/providers/portfolio_provider.dart';
+import 'shared/providers/quiz_provider.dart';
 import 'shared/providers/watchlist_provider.dart';
 import 'shared/providers/ai_mentor_provider.dart';
 import 'features/auth/auth_page.dart';
@@ -18,6 +19,7 @@ import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
 import 'features/watchlist/watchlist_page.dart';
 import 'features/goals/goals_page.dart';
+import 'features/quiz/quiz_page.dart';
 import 'features/ai_mentor/ai_mentor_page.dart';
 
 void main() async {
@@ -45,6 +47,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MarketProvider()),
         ChangeNotifierProvider(create: (_) => PortfolioProvider()),
+        ChangeNotifierProvider(create: (_) => QuizProvider()),
         ChangeNotifierProvider(create: (_) => WatchlistProvider()),
         ChangeNotifierProvider(create: (_) => AiMentorProvider()),
       ],
@@ -86,18 +89,24 @@ class MainShell extends StatelessWidget {
     PortfolioPage(),
     WatchlistPage(),
     GoalsPage(),
+    QuizPage(),
     AiMentorPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavProvider>();
+    final quiz = context.watch<QuizProvider>();
+    final isQuizInProgress = quiz.hasSession && !quiz.isFinished;
+    final isQuizTabActive = nav.currentIndex == 4;
+    final shouldHideBottomNav = isQuizInProgress && isQuizTabActive;
+
     return Scaffold(
       body: IndexedStack(
         index: nav.currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: const _FintellBottomNav(),
+      bottomNavigationBar: shouldHideBottomNav ? null : const _FintellBottomNav(),
     );
   }
 }
@@ -132,6 +141,10 @@ class _FintellBottomNav extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.flag_rounded),
             label: 'Goals',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_rounded),
+            label: 'Quiz',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.auto_awesome_rounded),
