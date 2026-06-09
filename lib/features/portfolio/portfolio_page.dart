@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../shared/providers/portfolio_provider.dart';
+import '../../shared/providers/market_provider.dart';
 import 'transaction_detail_page.dart';
 
 class PortfolioPage extends StatelessWidget {
@@ -57,8 +58,16 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final portfolio = context.watch<PortfolioProvider>();
-    final ret = portfolio.portfolioReturn;
-    final retPct = portfolio.portfolioReturnPercent;
+    final market = context.watch<MarketProvider>();
+
+    final livePriceMap = {for (final s in market.stocks) s.ticker: s.price};
+    final livePortfolioValue = portfolio.holdings.fold(0.0, (sum, h) {
+      final price = livePriceMap[h.stock.ticker] ?? h.stock.price;
+      return sum + price * h.shares;
+    });
+    final totalAccountValue = portfolio.balance + livePortfolioValue;
+    final ret = totalAccountValue - AppData.initialBalance;
+    final retPct = (ret / AppData.initialBalance) * 100;
     final isPositive = ret >= 0;
 
     return Container(
@@ -337,7 +346,19 @@ class _HoldingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPositive = owned.gainLoss >= 0;
+    final market = context.watch<MarketProvider>();
+    final livePrice = market.stocks
+        .firstWhere(
+          (s) => s.ticker == owned.stock.ticker,
+          orElse: () => owned.stock,
+        )
+        .price;
+    final currentValue = livePrice * owned.shares;
+    final gainLoss = (livePrice - owned.avgPrice) * owned.shares;
+    final gainLossPercent = owned.avgPrice == 0
+        ? 0.0
+        : ((livePrice - owned.avgPrice) / owned.avgPrice) * 100;
+    final isPositive = gainLoss >= 0;
     final tickerDisplay = owned.stock.ticker.length > 4
         ? owned.stock.ticker.substring(0, 4)
         : owned.stock.ticker;
@@ -394,7 +415,7 @@ class _HoldingTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${owned.currentValue.toStringAsFixed(2)}',
+                '\$${currentValue.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -403,8 +424,8 @@ class _HoldingTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${isPositive ? '+' : ''}\$${owned.gainLoss.toStringAsFixed(2)} '
-                '(${isPositive ? '+' : ''}${owned.gainLossPercent.toStringAsFixed(2)}%)',
+                '${isPositive ? '+' : ''}\$${gainLoss.toStringAsFixed(2)} '
+                '(${isPositive ? '+' : ''}${gainLossPercent.toStringAsFixed(2)}%)',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -476,6 +497,15 @@ class _EmptyHoldings extends StatelessWidget {
 
 void _showSellSheet(BuildContext context, OwnedStock holding) {
   final portfolio = context.read<PortfolioProvider>();
+  final market = context.read<MarketProvider>();
+
+  // Use live price from market API; fall back to stored price if not loaded yet
+  final liveStock = market.stocks.firstWhere(
+    (s) => s.ticker == holding.stock.ticker,
+    orElse: () => holding.stock,
+  );
+  final livePrice = liveStock.price > 0 ? liveStock.price : holding.stock.price;
+
   int qty = 1;
 
   showModalBottomSheet(
@@ -484,7 +514,6 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
     backgroundColor: Colors.transparent,
     builder: (_) => StatefulBuilder(
       builder: (ctx, setSheetState) {
-        final livePrice = holding.stock.price;
         final proceeds = qty * livePrice;
         final tickerDisplay = holding.stock.ticker.length > 4
             ? holding.stock.ticker.substring(0, 4)
