@@ -65,10 +65,9 @@ class _BalanceCard extends StatelessWidget {
       final price = livePriceMap[h.stock.ticker] ?? h.stock.price;
       return sum + price * h.shares;
     });
-    final ret = livePortfolioValue - portfolio.totalInvested;
-    final retPct = portfolio.totalInvested == 0
-        ? 0.0
-        : (ret / portfolio.totalInvested) * 100;
+    final totalAccountValue = portfolio.balance + livePortfolioValue;
+    final ret = totalAccountValue - AppData.initialBalance;
+    final retPct = (ret / AppData.initialBalance) * 100;
     final isPositive = ret >= 0;
 
     return Container(
