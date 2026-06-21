@@ -2,39 +2,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Each user can only read/write their own watchlist document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /watchlists/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Each user can only read/write their own portfolio data
-    match /users/{userId}/portfolio/{document} {
+    match /portfolio/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Each user can only read/write their own quiz reward claims
-    match /users/{userId}/quizRewards/{document} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /quiz_rewards/{docId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /chat_sessions/{sessionId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
     match /questions/{document} {
       allow read: if true;
-      allow write: if false; // Use bin/seed_questions.dart to update
+      allow write: if false;
     }
 
     match /modules/{document} {
       allow read: if true;
-      allow write: if false; // Use bin/seed_questions.dart to update
-    }
-
-    // Each user can only read/write their own AI chat history
-    match /users/{userId}/ai_chat/{document} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Each user can only read/write their own chat sessions
-    match /users/{userId}/chat_sessions/{sessionId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
     }
   }
 }

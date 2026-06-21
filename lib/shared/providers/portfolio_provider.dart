@@ -60,21 +60,19 @@ class PortfolioProvider extends ChangeNotifier {
 
     try {
       final doc = await _db
-          .collection('users')
-          .doc(_userId)
           .collection('portfolio')
-          .doc('data')
+          .doc(_userId)
           .get();
 
       // Load all completed quizzes
       final rewardsSnap = await _db
-          .collection('users')
-          .doc(_userId)
-          .collection('quizRewards')
+          .collection('quiz_rewards')
+          .where('userId', isEqualTo: _userId)
           .get();
       _completedModuleIds.clear();
       for (final doc in rewardsSnap.docs) {
-        _completedModuleIds.add(doc.id);
+        final moduleId = doc.data()['moduleId'] as String?;
+        if (moduleId != null) _completedModuleIds.add(moduleId);
       }
 
       if (doc.exists) {
@@ -101,13 +99,13 @@ class PortfolioProvider extends ChangeNotifier {
     if (_userId == null) return;
     try {
       final rewardsSnap = await _db
-          .collection('users')
-          .doc(_userId)
-          .collection('quizRewards')
+          .collection('quiz_rewards')
+          .where('userId', isEqualTo: _userId)
           .get();
       _completedModuleIds.clear();
       for (final doc in rewardsSnap.docs) {
-        _completedModuleIds.add(doc.id);
+        final moduleId = doc.data()['moduleId'] as String?;
+        if (moduleId != null) _completedModuleIds.add(moduleId);
       }
       notifyListeners();
     } catch (_) {}
@@ -116,11 +114,10 @@ class PortfolioProvider extends ChangeNotifier {
   Future<void> _saveToFirestore() async {
     if (_userId == null) return;
     await _db
-        .collection('users')
-        .doc(_userId)
         .collection('portfolio')
-        .doc('data')
+        .doc(_userId)
         .set({
+      'userId': _userId,
       'balance': _balance,
       'holdings': _holdings.map(_holdingToMap).toList(),
       'transactions': _transactions.map(_transactionToMap).toList(),
@@ -226,15 +223,11 @@ class PortfolioProvider extends ChangeNotifier {
     if (rewardAmount <= 0) return false;
 
     final rewardRef = _db
-        .collection('users')
-        .doc(userId)
-        .collection('quizRewards')
-        .doc(moduleId);
+        .collection('quiz_rewards')
+        .doc('${userId}_$moduleId');
     final portfolioRef = _db
-        .collection('users')
-        .doc(userId)
         .collection('portfolio')
-        .doc('data');
+        .doc(userId);
 
     final result = await _db.runTransaction<_QuizRewardTransactionResult>((tx) async {
       final rewardSnap = await tx.get(rewardRef);
@@ -255,6 +248,7 @@ class PortfolioProvider extends ChangeNotifier {
       tx.set(
         portfolioRef,
         {
+          'userId': userId,
           'balance': newBalance,
           if (!portfolioSnap.exists) 'holdings': <Map<String, dynamic>>[],
           if (!portfolioSnap.exists) 'transactions': <Map<String, dynamic>>[],
@@ -262,11 +256,12 @@ class PortfolioProvider extends ChangeNotifier {
         SetOptions(merge: true),
       );
       tx.set(rewardRef, {
+        'userId': userId,
+        'moduleId': moduleId,
         'claimedAt': FieldValue.serverTimestamp(),
         'score': normalizedScore,
         'totalQuestions': totalQuestions,
         'rewardAmount': rewardAmount,
-        'moduleId': moduleId,
       });
 
       return _QuizRewardTransactionResult(

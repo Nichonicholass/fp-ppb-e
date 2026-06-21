@@ -52,9 +52,8 @@ class AiMentorProvider extends ChangeNotifier {
 
     try {
       final snapshot = await _db
-          .collection('users')
-          .doc(_userId)
           .collection('chat_sessions')
+          .where('userId', isEqualTo: _userId)
           .orderBy('updatedAt', descending: true)
           .get();
 
@@ -102,8 +101,6 @@ class AiMentorProvider extends ChangeNotifier {
     if (_userId == null) return;
     try {
       await _db
-          .collection('users')
-          .doc(_userId)
           .collection('chat_sessions')
           .doc(sessionId)
           .delete();
@@ -163,11 +160,9 @@ class AiMentorProvider extends ChangeNotifier {
     if (_userId == null || _currentSession == null) return;
     try {
       await _db
-          .collection('users')
-          .doc(_userId)
           .collection('chat_sessions')
           .doc(_currentSession!.id)
-          .set(_currentSession!.toMap());
+          .set({..._currentSession!.toMap(), 'userId': _userId});
 
       _sessions.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       notifyListeners();
