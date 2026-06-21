@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ class AiMentorPage extends StatefulWidget {
 class _AiMentorPageState extends State<AiMentorPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _sendMessage([String? text]) {
     final content = (text ?? _controller.text).trim();
@@ -34,7 +36,8 @@ class _AiMentorPageState extends State<AiMentorPage> {
 
   String _buildPortfolioContext(PortfolioProvider p) {
     if (p.holdings.isEmpty) return '';
-    final holdingsSummary = p.holdings.map((h) => '${h.stock.ticker} x${h.shares}').join(', ');
+    final holdingsSummary =
+        p.holdings.map((h) => '${h.stock.ticker} x${h.shares}').join(', ');
     return 'Total portfolio value: \$${p.portfolioValue.toStringAsFixed(2)}, '
         'Cash balance: \$${p.balance.toStringAsFixed(2)}, '
         'Holdings: $holdingsSummary';
@@ -62,85 +65,404 @@ class _AiMentorPageState extends State<AiMentorPage> {
   @override
   Widget build(BuildContext context) {
     final mentor = context.watch<AiMentorProvider>();
+    final hasChat = mentor.messages.isNotEmpty || mentor.isLoading;
 
-    if (mentor.messages.isNotEmpty || mentor.isLoading) _scrollToBottom();
+    if (hasChat) _scrollToBottom();
 
     return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor:
+          hasChat ? AppTheme.background : const Color(0xFF0A0F1A),
       drawer: const _ChatHistoryDrawer(),
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Fintell AI',
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  mentor.currentSession?.title ?? 'Financial Mentor',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppTheme.positive,
-                    fontWeight: FontWeight.w500,
+      appBar: hasChat
+          ? AppBar(
+              title: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded,
+                        color: Colors.white, size: 18),
                   ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Fintell AI',
+                          style: GoogleFonts.inter(
+                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(
+                        mentor.currentSession?.title ?? 'Financial Mentor',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppTheme.positive,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add_comment_outlined),
+                  tooltip: 'New chat',
+                  onPressed: () =>
+                      context.read<AiMentorProvider>().startNewSession(),
+                ),
+              ],
+            )
+          : null,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
+        child: hasChat
+            ? _buildChatBody(context, mentor)
+            : _LandingView(
+                key: const ValueKey('landing'),
+                scaffoldKey: _scaffoldKey,
+                controller: _controller,
+                onSend: (t) => _sendMessage(t),
+                error: mentor.error,
+              ),
+      ),
+    );
+  }
+
+  Widget _buildChatBody(BuildContext context, AiMentorProvider mentor) {
+    return Column(
+      key: const ValueKey('chat'),
+      children: [
+        if (mentor.error != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.red.shade50,
+            child: Text(
+              mentor.error!,
+              style:
+                  GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700),
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            itemCount:
+                mentor.messages.length + (mentor.isLoading ? 1 : 0),
+            itemBuilder: (ctx, i) {
+              if (i == mentor.messages.length) {
+                final streaming = mentor.streamingText;
+                if (streaming != null && streaming.isNotEmpty) {
+                  return _ChatBubble(
+                    message: ChatMessage(
+                        text: streaming, isUser: false, time: ''),
+                  );
+                }
+                return const _TypingIndicator();
+              }
+              return _ChatBubble(message: mentor.messages[i]);
+            },
+          ),
+        ),
+        _InputBar(controller: _controller, onSend: () => _sendMessage()),
+      ],
+    );
+  }
+}
+
+// ─── Landing View ─────────────────────────────────────────────────────────────
+
+class _LandingView extends StatelessWidget {
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final TextEditingController controller;
+  final void Function(String) onSend;
+  final String? error;
+
+  const _LandingView({
+    super.key,
+    required this.scaffoldKey,
+    required this.controller,
+    required this.onSend,
+    this.error,
+  });
+
+  static const _suggestions = [
+    (Icons.trending_up, 'Explain dollar-cost averaging'),
+    (Icons.bar_chart, 'Best stocks for beginners?'),
+    (Icons.pie_chart, 'What is diversification?'),
+    (Icons.article, 'How to read a balance sheet?'),
+  ];
+
+  static String _firstName(User? user) {
+    final name = user?.displayName ?? '';
+    if (name.isNotEmpty) return name.split(' ').first;
+    final email = user?.email ?? '';
+    if (email.isNotEmpty) return email.split('@').first;
+    return 'there';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final name = _firstName(user);
+
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Top bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu_rounded, color: Colors.white60),
+                  onPressed: () => scaffoldKey.currentState?.openDrawer(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_comment_outlined,
+                      color: Colors.white60),
+                  tooltip: 'New chat',
+                  onPressed: () =>
+                      context.read<AiMentorProvider>().startNewSession(),
                 ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_comment_outlined),
-            tooltip: 'New chat',
-            onPressed: () => context.read<AiMentorProvider>().startNewSession(),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _SuggestedQuestions(onTap: _sendMessage),
-          if (mentor.error != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.red.shade50,
-              child: Text(
-                mentor.error!,
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700),
+
+          // Scrollable center content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+
+                  // AI avatar + label
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF059669)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(13),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  const Color(0xFF10B981).withValues(alpha: 0.45),
+                              blurRadius: 16,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Fintell AI',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Greeting
+                  Text(
+                    'Hello, $name!',
+                    style: GoogleFonts.inter(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'What would you like to learn\nabout investing today?',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: Colors.white54,
+                      height: 1.55,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+
+                  // Section label
+                  Text(
+                    'SUGGESTIONS',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white30,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2×2 suggestion cards
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 1.55,
+                    children: _suggestions.map((s) {
+                      final (icon, text) = s;
+                      return GestureDetector(
+                        onTap: () => onSend(text),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141B2D),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: const Color(0xFF1F2A40)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(icon,
+                                  color: AppTheme.primary, size: 20),
+                              const Spacer(),
+                              Text(
+                                text,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  color: Colors.white70,
+                                  height: 1.35,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-          Expanded(
-            child: mentor.messages.isEmpty && !mentor.isLoading
-                ? const _EmptyState()
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    itemCount: mentor.messages.length + (mentor.isLoading ? 1 : 0),
-                    itemBuilder: (ctx, i) {
-                      if (i == mentor.messages.length) return const _TypingIndicator();
-                      return _ChatBubble(message: mentor.messages[i]);
-                    },
-                  ),
           ),
-          _InputBar(controller: _controller, onSend: () => _sendMessage()),
+
+          // Error bar (if any)
+          if (error != null)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.red.shade900.withValues(alpha: 0.5),
+              child: Text(
+                error!,
+                style: GoogleFonts.inter(
+                    fontSize: 12, color: Colors.red.shade300),
+              ),
+            ),
+
+          // Gemini-style pill input
+          _LandingInputBar(controller: controller, onSend: onSend),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Landing Input Bar (pill, dark) ──────────────────────────────────────────
+
+class _LandingInputBar extends StatelessWidget {
+  final TextEditingController controller;
+  final void Function(String) onSend;
+
+  const _LandingInputBar(
+      {required this.controller, required this.onSend});
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding:
+          EdgeInsets.fromLTRB(16, 10, 16, 12 + bottomPadding),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 6, 8, 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141B2D),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: const Color(0xFF252D42)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                style:
+                    GoogleFonts.inter(fontSize: 14, color: Colors.white),
+                maxLines: 4,
+                minLines: 1,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (v) {
+                  final t = v.trim();
+                  if (t.isNotEmpty) onSend(t);
+                },
+                decoration: InputDecoration(
+                  hintText: 'Ask Fintell AI...',
+                  hintStyle: GoogleFonts.inter(
+                      fontSize: 14, color: Colors.white38),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10),
+                  filled: false,
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () {
+                final t = controller.text.trim();
+                if (t.isNotEmpty) onSend(t);
+              },
+              child: Container(
+                width: 38,
+                height: 38,
+                margin: const EdgeInsets.only(bottom: 2),
+                decoration: const BoxDecoration(
+                  color: AppTheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_upward_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -160,7 +482,6 @@ class _ChatHistoryDrawer extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
                   decoration: const BoxDecoration(
@@ -172,7 +493,8 @@ class _ChatHistoryDrawer extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
+                      const Icon(Icons.auto_awesome_rounded,
+                          color: Colors.white, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -185,17 +507,19 @@ class _ChatHistoryDrawer extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add_rounded, color: Colors.white),
+                        icon: const Icon(Icons.add_rounded,
+                            color: Colors.white),
                         tooltip: 'New chat',
                         onPressed: () {
-                          context.read<AiMentorProvider>().startNewSession();
+                          context
+                              .read<AiMentorProvider>()
+                              .startNewSession();
                           Navigator.pop(context);
                         },
                       ),
                     ],
                   ),
                 ),
-                // Session list
                 Expanded(
                   child: mentor.sessions.isEmpty
                       ? Center(
@@ -203,30 +527,37 @@ class _ChatHistoryDrawer extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.chat_bubble_outline_rounded,
-                                  size: 40, color: AppTheme.textTertiary),
+                                  size: 40,
+                                  color: AppTheme.textTertiary),
                               const SizedBox(height: 12),
                               Text(
                                 'No chats yet',
                                 style: GoogleFonts.inter(
-                                    fontSize: 14, color: AppTheme.textTertiary),
+                                    fontSize: 14,
+                                    color: AppTheme.textTertiary),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 8),
                           itemCount: mentor.sessions.length,
                           itemBuilder: (ctx, i) {
                             final session = mentor.sessions[i];
-                            final isActive = mentor.currentSession?.id == session.id;
+                            final isActive =
+                                mentor.currentSession?.id == session.id;
                             return _SessionTile(
                               session: session,
                               isActive: isActive,
                               onTap: () {
-                                context.read<AiMentorProvider>().switchSession(session);
+                                context
+                                    .read<AiMentorProvider>()
+                                    .switchSession(session);
                                 Navigator.pop(context);
                               },
-                              onDelete: () => _confirmDelete(context, mentor, session),
+                              onDelete: () =>
+                                  _confirmDelete(context, mentor, session),
                             );
                           },
                         ),
@@ -239,11 +570,13 @@ class _ChatHistoryDrawer extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, AiMentorProvider mentor, ChatSession session) {
+  void _confirmDelete(BuildContext context, AiMentorProvider mentor,
+      ChatSession session) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete chat?', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: Text('Delete chat?',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         content: Text(
           '"${session.title}"',
           style: GoogleFonts.inter(fontSize: 14),
@@ -260,7 +593,8 @@ class _ChatHistoryDrawer extends StatelessWidget {
               Navigator.pop(ctx);
               mentor.deleteSession(session.id);
             },
-            child: Text('Delete', style: GoogleFonts.inter(color: Colors.red)),
+            child: Text('Delete',
+                style: GoogleFonts.inter(color: Colors.red)),
           ),
         ],
       ),
@@ -286,7 +620,8 @@ class _SessionTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         color: isActive ? AppTheme.primaryLight : Colors.transparent,
         child: Row(
           children: [
@@ -300,7 +635,8 @@ class _SessionTile extends StatelessWidget {
               child: Icon(
                 Icons.chat_bubble_outline_rounded,
                 size: 15,
-                color: isActive ? Colors.white : AppTheme.textSecondary,
+                color:
+                    isActive ? Colors.white : AppTheme.textSecondary,
               ),
             ),
             const SizedBox(width: 10),
@@ -314,14 +650,19 @@ class _SessionTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                      color: isActive ? AppTheme.primaryDark : AppTheme.textPrimary,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isActive
+                          ? AppTheme.primaryDark
+                          : AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _formatDate(session.updatedAt),
-                    style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textTertiary),
+                    style: GoogleFonts.inter(
+                        fontSize: 11, color: AppTheme.textTertiary),
                   ),
                 ],
               ),
@@ -331,7 +672,8 @@ class _SessionTile extends StatelessWidget {
               color: AppTheme.textTertiary,
               onPressed: onDelete,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints:
+                  const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
           ],
         ),
@@ -352,102 +694,9 @@ class _SessionTile extends StatelessWidget {
 
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}';
-  }
-}
-
-// ─── Empty State ─────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF10B981), Color(0xFF059669)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 32),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'How can I help you?',
-            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Ask me anything about investing\nand personal finance.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Suggested Questions ─────────────────────────────────────────────────────
-
-class _SuggestedQuestions extends StatelessWidget {
-  final void Function(String) onTap;
-  const _SuggestedQuestions({required this.onTap});
-
-  static const _questions = [
-    'What is diversification?',
-    'Explain dollar-cost averaging',
-    'Best stocks for beginners?',
-    'How to read a balance sheet?',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppTheme.divider)),
-      ),
-      child: SizedBox(
-        height: 34,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _questions.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemBuilder: (ctx, i) => GestureDetector(
-            onTap: () => onTap(_questions[i]),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _questions[i],
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppTheme.primaryDark,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -463,7 +712,8 @@ class _ChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
@@ -471,33 +721,42 @@ class _ChatBubble extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
+                gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)]),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: Colors.white, size: 14),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: isUser ? AppTheme.primary : AppTheme.surface,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isUser ? 16 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 16),
+                      bottomLeft:
+                          Radius.circular(isUser ? 16 : 4),
+                      bottomRight:
+                          Radius.circular(isUser ? 4 : 16),
                     ),
                   ),
                   child: Text(
                     message.text,
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: isUser ? Colors.white : AppTheme.textPrimary,
+                      color: isUser
+                          ? Colors.white
+                          : AppTheme.textPrimary,
                       height: 1.55,
                     ),
                   ),
@@ -505,7 +764,8 @@ class _ChatBubble extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   message.time,
-                  style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textTertiary),
+                  style: GoogleFonts.inter(
+                      fontSize: 10, color: AppTheme.textTertiary),
                 ),
               ],
             ),
@@ -533,14 +793,17 @@ class _TypingIndicator extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF10B981), Color(0xFF059669)]),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
+            child: const Icon(Icons.auto_awesome_rounded,
+                color: Colors.white, size: 14),
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: const BorderRadius.only(
@@ -616,7 +879,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
   }
 }
 
-// ─── Input Bar ───────────────────────────────────────────────────────────────
+// ─── Chat Input Bar ───────────────────────────────────────────────────────────
 
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
@@ -627,7 +890,8 @@ class _InputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPadding),
+      padding:
+          EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPadding),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppTheme.divider)),
@@ -641,7 +905,8 @@ class _InputBar extends StatelessWidget {
               maxLines: null,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSend(),
-              decoration: const InputDecoration(hintText: 'Ask Fintell AI anything...'),
+              decoration: const InputDecoration(
+                  hintText: 'Ask Fintell AI anything...'),
             ),
           ),
           const SizedBox(width: 10),
@@ -654,7 +919,8 @@ class _InputBar extends StatelessWidget {
                 color: AppTheme.primary,
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 18),
             ),
           ),
         ],
