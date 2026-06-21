@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import '../../core/dummy_data/app_data.dart';
+import '../../core/services/notification_service.dart';
 
 class PortfolioProvider extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -155,6 +156,13 @@ class PortfolioProvider extends ChangeNotifier {
 
     notifyListeners();
     _saveToFirestore();
+    
+    NotificationService().showTransactionSuccess(
+      type: 'buy',
+      stockTicker: stock.ticker,
+      shares: shares,
+      totalAmount: total,
+    );
   }
 
   void sellStock(Stock stock, int shares, double price) {
@@ -188,6 +196,13 @@ class PortfolioProvider extends ChangeNotifier {
 
     notifyListeners();
     _saveToFirestore();
+    
+    NotificationService().showTransactionSuccess(
+      type: 'sell',
+      stockTicker: stock.ticker,
+      shares: shares,
+      totalAmount: proceeds,
+    );
   }
 
   Future<bool> claimQuizReward({

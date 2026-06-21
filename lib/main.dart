@@ -23,8 +23,11 @@ import 'features/watchlist/watchlist_page.dart';
 import 'features/quiz/quiz_page.dart';
 import 'features/ai_mentor/ai_mentor_page.dart';
 
+import 'core/services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
