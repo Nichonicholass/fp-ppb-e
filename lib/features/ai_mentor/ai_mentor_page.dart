@@ -212,10 +212,10 @@ class _LandingView extends StatelessWidget {
   });
 
   static const _suggestions = [
-    (Icons.pie_chart_rounded, 'Coba analisis portofolio saya'),
-    (Icons.trending_up_rounded, 'Saham apa yang cocok untuk pemula?'),
-    (Icons.bar_chart_rounded, 'Jelaskan strategi dollar-cost averaging'),
-    (Icons.lightbulb_rounded, 'Bagaimana cara membaca laporan keuangan?'),
+    (Icons.pie_chart_rounded, 'Please analyze my portfolio'),
+    (Icons.trending_up_rounded, 'What are good stocks for beginners?'),
+    (Icons.bar_chart_rounded, 'Explain dollar-cost averaging strategy'),
+    (Icons.lightbulb_rounded, 'How do I read a financial statement?'),
   ];
 
   static String _firstName(User? user) {

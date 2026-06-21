@@ -86,7 +86,7 @@ class Transaction {
 }
 
 class AppData {
-  static const double initialBalance = 10000.00;
+  static const double initialBalance = 100000.00;
 
   static const List<MarketIndex> indices = [
     MarketIndex(name: 'S&P 500', value: 5306.04, changePercent: 0.48),

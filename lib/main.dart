@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
@@ -15,6 +16,7 @@ import 'shared/providers/quiz_provider.dart';
 import 'shared/providers/watchlist_provider.dart';
 import 'shared/providers/ai_mentor_provider.dart';
 import 'features/auth/auth_page.dart';
+import 'features/splash/onboarding_page.dart';
 import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
 import 'features/watchlist/watchlist_page.dart';
@@ -64,19 +66,95 @@ class FintellApp extends StatelessWidget {
       title: 'Fintell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasData) return const MainShell();
-          return const AuthPage();
-        },
-      ),
+      home: const SplashWrapper(),
     );
+  }
+}
+
+class SplashWrapper extends StatefulWidget {
+  const SplashWrapper({super.key});
+
+  @override
+  State<SplashWrapper> createState() => _SplashWrapperState();
+}
+
+class _SplashWrapperState extends State<SplashWrapper> {
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showSplash = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showSplash) {
+      return Scaffold(
+        backgroundColor: AppTheme.primary,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.show_chart_rounded, size: 48, color: AppTheme.primary),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Fintell',
+                style: GoogleFonts.inter(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasData) return const MainShell();
+        return const UnAuthWrapper();
+      },
+    );
+  }
+}
+
+class UnAuthWrapper extends StatefulWidget {
+  const UnAuthWrapper({super.key});
+
+  @override
+  State<UnAuthWrapper> createState() => _UnAuthWrapperState();
+}
+
+class _UnAuthWrapperState extends State<UnAuthWrapper> {
+  bool _showOnboarding = true;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showOnboarding) {
+      return OnboardingPage(
+        onFinish: () => setState(() => _showOnboarding = false),
+      );
+    }
+    return const AuthPage();
   }
 }
 
@@ -180,7 +258,7 @@ class _FintellBottomNav extends StatelessWidget {
 
               // ── Center AI Mentor floating button ──
               Positioned(
-                bottom: 8,
+                bottom: 14,
                 left: 0,
                 right: 0,
                 child: Center(
@@ -188,8 +266,8 @@ class _FintellBottomNav extends StatelessWidget {
                     onTap: () => nav.setIndex(2),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      width: 56,
-                      height: 56,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         gradient: isAiActive
                             ? const LinearGradient(
@@ -216,7 +294,7 @@ class _FintellBottomNav extends StatelessWidget {
                       child: const Icon(
                         Icons.auto_awesome_rounded,
                         color: Colors.white,
-                        size: 26,
+                        size: 22,
                       ),
                     ),
                   ),

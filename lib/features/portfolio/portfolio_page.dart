@@ -103,7 +103,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
             if (context.watch<PortfolioProvider>().holdings.isEmpty)
               const _EmptyHoldings(),
             const SizedBox(height: 24),
-            const _TransactionHistorySection(),
+            _TransactionHistorySection(showIdr: _showIdr, rate: rate),
             const SizedBox(height: 24),
           ],
         ),
@@ -949,7 +949,9 @@ class _SellQtyButton extends StatelessWidget {
 // ── Transaction History ───────────────────────────────────────────────────────
 
 class _TransactionHistorySection extends StatelessWidget {
-  const _TransactionHistorySection();
+  final bool showIdr;
+  final double rate;
+  const _TransactionHistorySection({required this.showIdr, required this.rate});
 
   @override
   Widget build(BuildContext context) {
@@ -1010,7 +1012,7 @@ class _TransactionHistorySection extends StatelessWidget {
                 endIndent: 16,
                 color: AppTheme.divider,
               ),
-              itemBuilder: (_, i) => _TransactionRow(tx: recent[i]),
+              itemBuilder: (_, i) => _TransactionRow(tx: recent[i], showIdr: showIdr, rate: rate),
             ),
           ),
       ],
@@ -1020,7 +1022,19 @@ class _TransactionHistorySection extends StatelessWidget {
 
 class _TransactionRow extends StatelessWidget {
   final Transaction tx;
-  const _TransactionRow({required this.tx});
+  final bool showIdr;
+  final double rate;
+  const _TransactionRow({required this.tx, required this.showIdr, required this.rate});
+
+  String _fmt(double usdVal) {
+    if (showIdr) {
+      final idr = usdVal * rate;
+      final s = idr.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+      return 'Rp $s';
+    }
+    return '\$${usdVal.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1093,7 +1107,7 @@ class _TransactionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '\$${tx.total.toStringAsFixed(2)}',
+                      _fmt(tx.total),
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -1102,7 +1116,7 @@ class _TransactionRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${tx.shares} sh @ \$${tx.price.toStringAsFixed(2)}',
+                      '${tx.shares} sh @ ${_fmt(tx.price)}',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: AppTheme.textSecondary,

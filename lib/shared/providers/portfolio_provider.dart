@@ -222,22 +222,27 @@ class PortfolioProvider extends ChangeNotifier {
     final rewardAmount = normalizedScore * rewardPerCorrect;
     if (rewardAmount <= 0) return false;
 
+    final safeModuleId = moduleId.replaceAll('/', '_');
+    
+    // Check if already claimed using query to avoid permission denied on non-existent doc
+    final existingQuery = await _db
+        .collection('quiz_rewards')
+        .where('userId', isEqualTo: userId)
+        .where('moduleId', isEqualTo: moduleId)
+        .get();
+        
+    if (existingQuery.docs.isNotEmpty) {
+      return false;
+    }
+
     final rewardRef = _db
         .collection('quiz_rewards')
-        .doc('${userId}_$moduleId');
+        .doc('${userId}_$safeModuleId');
     final portfolioRef = _db
         .collection('portfolio')
         .doc(userId);
 
-    final result = await _db.runTransaction<_QuizRewardTransactionResult>((tx) async {
-      final rewardSnap = await tx.get(rewardRef);
-      if (rewardSnap.exists) {
-        return _QuizRewardTransactionResult(
-          claimed: false,
-          balance: _balance,
-        );
-      }
-
+    final result = await _db.runTransaction((tx) async {
       final portfolioSnap = await tx.get(portfolioRef);
       final currentBalance = portfolioSnap.exists
           ? ((portfolioSnap.data()?['balance'] as num?)?.toDouble() ??
@@ -268,7 +273,7 @@ class PortfolioProvider extends ChangeNotifier {
         claimed: true,
         balance: newBalance,
       );
-    });
+    }) as _QuizRewardTransactionResult;
 
     if (result.claimed) {
       _balance = result.balance;
