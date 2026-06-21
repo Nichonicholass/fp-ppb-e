@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -22,43 +23,61 @@ class AiMentorService {
       ..addAll(history);
   }
 
-  Future<String> sendMessage(String userMessage) async {
+  Stream<String> sendMessageStream(String userMessage) async* {
     final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
     _history.add({'role': 'user', 'content': userMessage});
 
+    final client = http.Client();
     try {
-      final response = await http
-          .post(
-            Uri.parse(_baseUrl),
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': _model,
-              'messages': [
-                {'role': 'system', 'content': _systemInstruction},
-                ..._history,
-              ],
-              'max_tokens': 1024,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final request = http.Request('POST', Uri.parse(_baseUrl));
+      request.headers['Authorization'] = 'Bearer $apiKey';
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode({
+        'model': _model,
+        'messages': [
+          {'role': 'system', 'content': _systemInstruction},
+          ..._history,
+        ],
+        'max_tokens': 1024,
+        'stream': true,
+      });
 
-      if (response.statusCode != 200) {
-        debugPrint('[AiMentorService] HTTP ${response.statusCode}: ${response.body}');
+      final streamed = await client.send(request);
+
+      if (streamed.statusCode != 200) {
+        final body = await streamed.stream.bytesToString();
+        debugPrint('[AiMentorService] HTTP ${streamed.statusCode}: $body');
         _history.removeLast();
-        return 'Sorry, something went wrong (${response.statusCode}). Please try again.';
+        throw Exception('API error ${streamed.statusCode}');
       }
 
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      final text = body['choices'][0]['message']['content'] as String;
-      _history.add({'role': 'assistant', 'content': text});
-      return text.trim();
+      final fullResponse = StringBuffer();
+      await for (final chunk in streamed.stream.transform(utf8.decoder)) {
+        for (final line in chunk.split('\n')) {
+          final trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          final data = trimmed.substring(6);
+          if (data == '[DONE]') break;
+          try {
+            final json = jsonDecode(data) as Map<String, dynamic>;
+            final delta = json['choices']?[0]?['delta']?['content'] as String?;
+            if (delta != null && delta.isNotEmpty) {
+              fullResponse.write(delta);
+              yield delta;
+            }
+          } catch (_) {
+            // skip malformed SSE chunks
+          }
+        }
+      }
+
+      _history.add({'role': 'assistant', 'content': fullResponse.toString()});
     } catch (e) {
-      debugPrint('[AiMentorService] error: $e');
+      debugPrint('[AiMentorService] streaming error: $e');
       _history.removeLast();
-      return 'Sorry, something went wrong. Please check your connection and try again.';
+      rethrow;
+    } finally {
+      client.close();
     }
   }
 }

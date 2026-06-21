@@ -3,25 +3,83 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../core/services/currency_service.dart';
 import '../../shared/providers/portfolio_provider.dart';
 import '../../shared/providers/market_provider.dart';
 import 'transaction_detail_page.dart';
 
-class PortfolioPage extends StatelessWidget {
+class PortfolioPage extends StatefulWidget {
   const PortfolioPage({super.key});
 
   @override
+  State<PortfolioPage> createState() => _PortfolioPageState();
+}
+
+class _PortfolioPageState extends State<PortfolioPage> {
+  bool _showIdr = false; // false = USD, true = IDR
+
+  @override
   Widget build(BuildContext context) {
+    final rate = CurrencyService.currentRate;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Portfolio'),
+        actions: [
+          // Currency Toggle
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: () => setState(() => _showIdr = !_showIdr),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _showIdr
+                      ? const Color(0xFFFEF3C7)
+                      : AppTheme.primaryLight,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _showIdr
+                        ? const Color(0xFFD97706)
+                        : AppTheme.primary,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _showIdr ? 'IDR' : 'USD',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _showIdr
+                            ? const Color(0xFFD97706)
+                            : AppTheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 14,
+                      color: _showIdr
+                          ? const Color(0xFFD97706)
+                          : AppTheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _BalanceCard(),
+            _BalanceCard(showIdr: _showIdr, rate: rate),
             const SizedBox(height: 20),
             const _PerformanceChart(),
             const SizedBox(height: 24),
@@ -37,13 +95,15 @@ class PortfolioPage extends StatelessWidget {
             ...context.watch<PortfolioProvider>().holdings.map(
               (s) => _HoldingTile(
                 owned: s,
+                showIdr: _showIdr,
+                rate: rate,
                 onSell: () => _showSellSheet(context, s),
               ),
             ),
             if (context.watch<PortfolioProvider>().holdings.isEmpty)
               const _EmptyHoldings(),
             const SizedBox(height: 24),
-            const _TransactionHistorySection(),
+            _TransactionHistorySection(showIdr: _showIdr, rate: rate),
             const SizedBox(height: 24),
           ],
         ),
@@ -53,7 +113,19 @@ class PortfolioPage extends StatelessWidget {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard();
+  final bool showIdr;
+  final double rate;
+  const _BalanceCard({required this.showIdr, required this.rate});
+
+  String _fmt(double usdVal) {
+    if (showIdr) {
+      final idr = usdVal * rate;
+      final s = idr.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+      return 'Rp $s';
+    }
+    return '\$${usdVal.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,17 +156,38 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Virtual Portfolio Balance',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.85),
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            children: [
+              Text(
+                'Virtual Portfolio Balance',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              // Currency label badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  showIdr ? 'IDR' : 'USD',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            '\$${portfolio.balance.toStringAsFixed(2)}',
+            _fmt(portfolio.balance),
             style: GoogleFonts.inter(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -106,7 +199,7 @@ class _BalanceCard extends StatelessWidget {
             children: [
               _BalanceStat(
                 label: 'Total Invested',
-                value: '\$${portfolio.totalInvested.toStringAsFixed(2)}',
+                value: _fmt(portfolio.totalInvested),
               ),
               Container(
                 width: 1,
@@ -116,7 +209,7 @@ class _BalanceCard extends StatelessWidget {
               ),
               _BalanceStat(
                 label: 'Total Return',
-                value: '${isPositive ? '+' : ''}\$${ret.toStringAsFixed(2)}',
+                value: '${isPositive ? '+' : ''}${_fmt(ret)}',
                 badge: '${isPositive ? '+' : ''}${retPct.toStringAsFixed(2)}%',
               ),
             ],
@@ -341,18 +434,45 @@ class _LineChartPainter extends CustomPainter {
 
 class _HoldingTile extends StatelessWidget {
   final OwnedStock owned;
+  final bool showIdr;
+  final double rate;
   final VoidCallback? onSell;
-  const _HoldingTile({required this.owned, this.onSell});
+  const _HoldingTile({
+    required this.owned,
+    required this.showIdr,
+    required this.rate,
+    this.onSell,
+  });
+
+  String _fmt(double usdVal) {
+    if (showIdr) {
+      final idr = usdVal * rate;
+      final s = idr.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+      return 'Rp $s';
+    }
+    return '\$${usdVal.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final market = context.watch<MarketProvider>();
-    final livePrice = market.stocks
+    final isIDX = owned.stock.symbol.endsWith('.JK');
+
+    // Get live price (in native currency: IDR for IDX, USD for Global)
+    double livePrice = market.stocks
         .firstWhere(
           (s) => s.ticker == owned.stock.ticker,
           orElse: () => owned.stock,
         )
         .price;
+
+    // BUG FIX: IDX live price is in IDR, but avgPrice is stored in USD.
+    // Convert live price to USD for consistent comparison.
+    if (isIDX && livePrice > 0) {
+      livePrice = CurrencyService.idrToUsd(livePrice);
+    }
+
     final currentValue = livePrice * owned.shares;
     final gainLoss = (livePrice - owned.avgPrice) * owned.shares;
     final gainLossPercent = owned.avgPrice == 0
@@ -405,7 +525,7 @@ class _HoldingTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${owned.shares} shares · avg \$${owned.avgPrice.toStringAsFixed(2)}',
+                  '${owned.shares} shares · avg ${_fmt(owned.avgPrice)}',
                   style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ],
@@ -415,7 +535,7 @@ class _HoldingTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${currentValue.toStringAsFixed(2)}',
+                _fmt(currentValue),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -424,7 +544,7 @@ class _HoldingTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${isPositive ? '+' : ''}\$${gainLoss.toStringAsFixed(2)} '
+                '${isPositive ? '+' : ''}${_fmt(gainLoss)} '
                 '(${isPositive ? '+' : ''}${gainLossPercent.toStringAsFixed(2)}%)',
                 style: GoogleFonts.inter(
                   fontSize: 11,
@@ -498,15 +618,25 @@ class _EmptyHoldings extends StatelessWidget {
 void _showSellSheet(BuildContext context, OwnedStock holding) {
   final portfolio = context.read<PortfolioProvider>();
   final market = context.read<MarketProvider>();
+  final isIDX = holding.stock.symbol.endsWith('.JK');
+  const int lotSize = 100; // 1 lot = 100 shares (IDX rule)
 
   // Use live price from market API; fall back to stored price if not loaded yet
   final liveStock = market.stocks.firstWhere(
     (s) => s.ticker == holding.stock.ticker,
     orElse: () => holding.stock,
   );
-  final livePrice = liveStock.price > 0 ? liveStock.price : holding.stock.price;
+  final livePriceRaw = liveStock.price > 0 ? liveStock.price : holding.stock.price;
 
-  int qty = 1;
+  // BUG FIX: IDX price from market is in IDR — must convert to USD for sell
+  final livePriceUsd = isIDX
+      ? CurrencyService.idrToUsd(livePriceRaw)
+      : livePriceRaw;
+  final rate = CurrencyService.currentRate;
+
+  // For IDX: sell in lots (1 lot = 100 shares)
+  final maxLots = isIDX ? (holding.shares ~/ lotSize) : holding.shares;
+  int qty = 1; // lots for IDX, shares for global
 
   showModalBottomSheet(
     context: context,
@@ -514,7 +644,21 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
     backgroundColor: Colors.transparent,
     builder: (_) => StatefulBuilder(
       builder: (ctx, setSheetState) {
-        final proceeds = qty * livePrice;
+        final actualShares = isIDX ? qty * lotSize : qty;
+        final proceedsUsd = actualShares * livePriceUsd;
+        final proceedsIdr = proceedsUsd * rate;
+
+        String fmtIdr(double v) {
+          final s = v.toStringAsFixed(0).replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+          return 'Rp $s';
+        }
+
+        // Price display: IDR for IDX stocks, USD for global
+        final priceDisplay = isIDX
+            ? fmtIdr(livePriceRaw)   // show IDR (native)
+            : '\$${livePriceUsd.toStringAsFixed(2)}';
+
         final tickerDisplay = holding.stock.ticker.length > 4
             ? holding.stock.ticker.substring(0, 4)
             : holding.stock.ticker;
@@ -525,9 +669,7 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.fromLTRB(
-            24,
-            20,
-            24,
+            24, 20, 24,
             24 + MediaQuery.of(ctx).viewInsets.bottom,
           ),
           child: Column(
@@ -588,17 +730,32 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
                       ],
                     ),
                   ),
-                  Text(
-                    '\$${livePrice.toStringAsFixed(2)}',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
+                  // Price display with conversion
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        priceDisplay,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      if (isIDX)
+                        Text(
+                          '≈ \$${livePriceUsd.toStringAsFixed(4)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: AppTheme.textTertiary,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 20),
+              // Shares/Lots info
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -608,7 +765,7 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
                 child: Row(
                   children: [
                     Text(
-                      'Shares Owned',
+                      isIDX ? 'Lot Dimiliki' : 'Shares Owned',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: AppTheme.textSecondary,
@@ -616,7 +773,9 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
                     ),
                     const Spacer(),
                     Text(
-                      '${holding.shares}',
+                      isIDX
+                          ? '$maxLots lot (${holding.shares} saham)'
+                          : '${holding.shares}',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -628,7 +787,7 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
               ),
               const SizedBox(height: 20),
               Text(
-                'Shares to Sell',
+                isIDX ? 'Lot to Sell' : 'Shares to Sell',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -645,19 +804,31 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
                   ),
                   Expanded(
                     child: Center(
-                      child: Text(
-                        '$qty',
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary,
-                        ),
+                      child: Column(
+                        children: [
+                          Text(
+                            isIDX ? '$qty lot' : '$qty',
+                            style: GoogleFonts.inter(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          if (isIDX)
+                            Text(
+                              '= $actualShares saham',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppTheme.textTertiary,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
                   _SellQtyButton(
                     icon: Icons.add_rounded,
-                    enabled: qty < holding.shares,
+                    enabled: qty < maxLots,
                     onTap: () => setSheetState(() => qty++),
                   ),
                 ],
@@ -673,13 +844,26 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
                       color: AppTheme.textSecondary,
                     ),
                   ),
-                  Text(
-                    '\$${proceeds.toStringAsFixed(2)}',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.positive,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '\$${proceedsUsd.toStringAsFixed(2)}',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.positive,
+                        ),
+                      ),
+                      if (isIDX)
+                        Text(
+                          '≈ ${fmtIdr(proceedsIdr)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: AppTheme.textTertiary,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -689,12 +873,15 @@ void _showSellSheet(BuildContext context, OwnedStock holding) {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    portfolio.sellStock(holding.stock, qty, livePrice);
+                    // Sell at USD price (converted from IDR for IDX)
+                    portfolio.sellStock(holding.stock, actualShares, livePriceUsd);
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Sold $qty share${qty > 1 ? 's' : ''} of ${holding.stock.ticker}',
+                          isIDX
+                              ? 'Sold $qty lot ($actualShares saham) ${holding.stock.ticker}'
+                              : 'Sold $qty share${qty > 1 ? 's' : ''} of ${holding.stock.ticker}',
                           style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                         ),
                         backgroundColor: AppTheme.negative,
@@ -762,7 +949,9 @@ class _SellQtyButton extends StatelessWidget {
 // ── Transaction History ───────────────────────────────────────────────────────
 
 class _TransactionHistorySection extends StatelessWidget {
-  const _TransactionHistorySection();
+  final bool showIdr;
+  final double rate;
+  const _TransactionHistorySection({required this.showIdr, required this.rate});
 
   @override
   Widget build(BuildContext context) {
@@ -823,7 +1012,7 @@ class _TransactionHistorySection extends StatelessWidget {
                 endIndent: 16,
                 color: AppTheme.divider,
               ),
-              itemBuilder: (_, i) => _TransactionRow(tx: recent[i]),
+              itemBuilder: (_, i) => _TransactionRow(tx: recent[i], showIdr: showIdr, rate: rate),
             ),
           ),
       ],
@@ -833,7 +1022,19 @@ class _TransactionHistorySection extends StatelessWidget {
 
 class _TransactionRow extends StatelessWidget {
   final Transaction tx;
-  const _TransactionRow({required this.tx});
+  final bool showIdr;
+  final double rate;
+  const _TransactionRow({required this.tx, required this.showIdr, required this.rate});
+
+  String _fmt(double usdVal) {
+    if (showIdr) {
+      final idr = usdVal * rate;
+      final s = idr.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+      return 'Rp $s';
+    }
+    return '\$${usdVal.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -906,7 +1107,7 @@ class _TransactionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '\$${tx.total.toStringAsFixed(2)}',
+                      _fmt(tx.total),
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -915,7 +1116,7 @@ class _TransactionRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${tx.shares} sh @ \$${tx.price.toStringAsFixed(2)}',
+                      '${tx.shares} sh @ ${_fmt(tx.price)}',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: AppTheme.textSecondary,

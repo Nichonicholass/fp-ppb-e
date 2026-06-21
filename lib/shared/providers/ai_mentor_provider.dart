@@ -16,6 +16,7 @@ class AiMentorProvider extends ChangeNotifier {
   ChatSession? _currentSession;
   bool _isLoading = false;
   String? _error;
+  String? _streamingText;
 
   List<ChatSession> get sessions => List.unmodifiable(_sessions);
   ChatSession? get currentSession => _currentSession;
@@ -23,6 +24,7 @@ class AiMentorProvider extends ChangeNotifier {
       List.unmodifiable(_currentSession?.messages ?? []);
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get streamingText => _streamingText;
 
   AiMentorProvider() {
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
@@ -41,6 +43,7 @@ class AiMentorProvider extends ChangeNotifier {
     _currentSession = null;
     _isLoading = false;
     _error = null;
+    _streamingText = null;
     _service.resetSession([]);
     notifyListeners();
   }
@@ -64,7 +67,7 @@ class AiMentorProvider extends ChangeNotifier {
 
       if (_sessions.isNotEmpty) {
         _currentSession = _sessions.first;
-        _rebuildGroqHistory();
+        _rebuildChatHistory();
       }
     } catch (e) {
       debugPrint('[AiMentorProvider] load error: $e');
@@ -82,8 +85,25 @@ class AiMentorProvider extends ChangeNotifier {
 
   void switchSession(ChatSession session) {
     _currentSession = session;
-    _rebuildGroqHistory();
+    _rebuildChatHistory();
     notifyListeners();
+  }
+
+  Future<void> renameSession(String sessionId, String newTitle) async {
+    final session = _sessions.firstWhere((s) => s.id == sessionId,
+        orElse: () => throw StateError('Session not found'));
+    session.title = newTitle;
+    notifyListeners();
+
+    if (_userId == null) return;
+    try {
+      await _db
+          .collection('chat_sessions')
+          .doc(sessionId)
+          .update({'title': newTitle});
+    } catch (e) {
+      debugPrint('[AiMentorProvider] rename error: $e');
+    }
   }
 
   Future<void> deleteSession(String sessionId) async {
@@ -91,7 +111,7 @@ class AiMentorProvider extends ChangeNotifier {
     if (_currentSession?.id == sessionId) {
       _currentSession = _sessions.isNotEmpty ? _sessions.first : null;
       if (_currentSession != null) {
-        _rebuildGroqHistory();
+        _rebuildChatHistory();
       } else {
         _service.resetSession([]);
       }
@@ -100,10 +120,7 @@ class AiMentorProvider extends ChangeNotifier {
 
     if (_userId == null) return;
     try {
-      await _db
-          .collection('chat_sessions')
-          .doc(sessionId)
-          .delete();
+      await _db.collection('chat_sessions').doc(sessionId).delete();
     } catch (e) {
       debugPrint('[AiMentorProvider] delete error: $e');
     }
@@ -123,13 +140,13 @@ class AiMentorProvider extends ChangeNotifier {
       ChatMessage(text: content, isUser: true, time: _nowTime()),
     );
 
-    // Auto-title from first user message
     if (_currentSession!.messages.where((m) => m.isUser).length == 1) {
       _currentSession!.title =
           content.length > 45 ? '${content.substring(0, 45)}...' : content;
     }
 
     _isLoading = true;
+    _streamingText = '';
     _error = null;
     notifyListeners();
 
@@ -137,19 +154,33 @@ class AiMentorProvider extends ChangeNotifier {
         ? '[Context: $portfolioContext]\n\n$content'
         : content;
 
-    final reply = await _service.sendMessage(prompt);
+    final buffer = StringBuffer();
+    try {
+      await for (final chunk in _service.sendMessageStream(prompt)) {
+        buffer.write(chunk);
+        _streamingText = buffer.toString();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[AiMentorProvider] streaming error: $e');
+      _error = 'Something went wrong. Please try again.';
+    }
 
-    _currentSession!.messages.add(
-      ChatMessage(text: reply, isUser: false, time: _nowTime()),
-    );
-    _currentSession!.updatedAt = DateTime.now();
+    final reply = buffer.toString().trim();
+    if (reply.isNotEmpty) {
+      _currentSession!.messages.add(
+        ChatMessage(text: reply, isUser: false, time: _nowTime()),
+      );
+      _currentSession!.updatedAt = DateTime.now();
+    }
+    _streamingText = null;
     _isLoading = false;
     notifyListeners();
 
-    await _saveCurrentSession();
+    if (reply.isNotEmpty) await _saveCurrentSession();
   }
 
-  void _rebuildGroqHistory() {
+  void _rebuildChatHistory() {
     final history = (_currentSession?.messages ?? [])
         .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
         .toList();

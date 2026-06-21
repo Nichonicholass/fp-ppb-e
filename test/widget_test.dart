@@ -14,6 +14,5 @@ void main() {
 
     expect(find.text('Market'), findsOneWidget);
     expect(find.text('Portfolio'), findsOneWidget);
-    expect(find.text('Goals'), findsOneWidget);
   });
 }

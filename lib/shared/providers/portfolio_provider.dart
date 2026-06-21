@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import '../../core/dummy_data/app_data.dart';
+import '../../core/services/notification_service.dart';
 
 class PortfolioProvider extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -155,6 +156,13 @@ class PortfolioProvider extends ChangeNotifier {
 
     notifyListeners();
     _saveToFirestore();
+    
+    NotificationService().showTransactionSuccess(
+      type: 'buy',
+      stockTicker: stock.ticker,
+      shares: shares,
+      totalAmount: total,
+    );
   }
 
   void sellStock(Stock stock, int shares, double price) {
@@ -188,6 +196,13 @@ class PortfolioProvider extends ChangeNotifier {
 
     notifyListeners();
     _saveToFirestore();
+    
+    NotificationService().showTransactionSuccess(
+      type: 'sell',
+      stockTicker: stock.ticker,
+      shares: shares,
+      totalAmount: proceeds,
+    );
   }
 
   Future<bool> claimQuizReward({
@@ -222,22 +237,27 @@ class PortfolioProvider extends ChangeNotifier {
     final rewardAmount = normalizedScore * rewardPerCorrect;
     if (rewardAmount <= 0) return false;
 
+    final safeModuleId = moduleId.replaceAll('/', '_');
+    
+    // Check if already claimed using query to avoid permission denied on non-existent doc
+    final existingQuery = await _db
+        .collection('quiz_rewards')
+        .where('userId', isEqualTo: userId)
+        .where('moduleId', isEqualTo: moduleId)
+        .get();
+        
+    if (existingQuery.docs.isNotEmpty) {
+      return false;
+    }
+
     final rewardRef = _db
         .collection('quiz_rewards')
-        .doc('${userId}_$moduleId');
+        .doc('${userId}_$safeModuleId');
     final portfolioRef = _db
         .collection('portfolio')
         .doc(userId);
 
-    final result = await _db.runTransaction<_QuizRewardTransactionResult>((tx) async {
-      final rewardSnap = await tx.get(rewardRef);
-      if (rewardSnap.exists) {
-        return _QuizRewardTransactionResult(
-          claimed: false,
-          balance: _balance,
-        );
-      }
-
+    final result = await _db.runTransaction((tx) async {
       final portfolioSnap = await tx.get(portfolioRef);
       final currentBalance = portfolioSnap.exists
           ? ((portfolioSnap.data()?['balance'] as num?)?.toDouble() ??
@@ -268,7 +288,7 @@ class PortfolioProvider extends ChangeNotifier {
         claimed: true,
         balance: newBalance,
       );
-    });
+    }) as _QuizRewardTransactionResult;
 
     if (result.claimed) {
       _balance = result.balance;

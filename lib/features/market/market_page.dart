@@ -4,16 +4,62 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../core/services/currency_service.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/market_provider.dart';
+import '../../shared/providers/portfolio_provider.dart';
 import 'stock_detail_page.dart';
 
-class MarketPage extends StatelessWidget {
+class MarketPage extends StatefulWidget {
   const MarketPage({super.key});
+
+  @override
+  State<MarketPage> createState() => _MarketPageState();
+}
+
+class _MarketPageState extends State<MarketPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  String _formattedDate() {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final now = DateTime.now();
+    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final market = context.watch<MarketProvider>();
+    final filtered = _query.isEmpty
+        ? market.stocks
+        : market.stocks
+            .where((s) =>
+                s.ticker.toLowerCase().contains(_query) ||
+                s.name.toLowerCase().contains(_query))
+            .toList();
+
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
@@ -35,14 +81,34 @@ class MarketPage extends StatelessWidget {
                     onRetry: market.fetchAll,
                   ),
                 )
+              else if (filtered.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.search_off_rounded,
+                            size: 48, color: AppTheme.textSecondary),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No stocks match "$_query"',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (ctx, i) => _StockListTile(
-                      stock: market.stocks[i],
+                      stock: filtered[i],
                       isIDX: market.isIDX,
                     ),
-                    childCount: market.stocks.length,
+                    childCount: filtered.length,
                   ),
                 ),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -51,20 +117,6 @@ class MarketPage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
-
-  String _formattedDate() {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final now = DateTime.now();
-    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -216,32 +268,94 @@ class MarketPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: TextField(
+        controller: _searchController,
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 20),
+          prefixIcon: const Icon(Icons.search_rounded,
+              color: AppTheme.textSecondary, size: 20),
           hintText: 'Search stocks, ETFs...',
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  color: AppTheme.textSecondary,
+                  onPressed: _searchController.clear,
+                )
+              : null,
         ),
       ),
     );
   }
 
   Widget _buildSectionHeader(BuildContext context, MarketProvider market) {
+    final portfolio = context.watch<PortfolioProvider>();
+    final rate = market.usdToIdrRate;
+    // Format IDR balance: $10000 * 17000 = Rp 170.000.000
+    final balanceIdr = portfolio.balance * rate;
+    final balanceIdrStr = balanceIdr.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.'
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Popular Stocks',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _query.isEmpty ? 'Popular Stocks' : 'Results',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              _MarketToggle(
+                selected: market.mode,
+                onChanged: (mode) => context.read<MarketProvider>().switchMode(mode),
+              ),
+            ],
+          ),
+          // Balance in IDR — only shown for IDX mode
+          if (market.isIDX) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.account_balance_wallet_rounded,
+                          size: 11, color: AppTheme.primary),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Saldo: Rp $balanceIdrStr',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Harga dalam IDR',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ],
             ),
-          ),
-          _MarketToggle(
-            selected: market.mode,
-            onChanged: (mode) => context.read<MarketProvider>().switchMode(mode),
-          ),
+          ],
         ],
       ),
     );
@@ -390,7 +504,7 @@ class _StockListTile extends StatelessWidget {
 
   String _formatPrice(double price) {
     if (isIDX) {
-      // IDR prices are in full rupiah, format with thousand separators
+      // IDX prices are in IDR (native)
       final formatted = price.toStringAsFixed(0).replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
         (m) => '${m[1]}.',
@@ -413,94 +527,94 @@ class _StockListTile extends StatelessWidget {
         ),
       ),
       child: Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: stock.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                tickerDisplay,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: stock.color,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: stock.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(
+                  tickerDisplay,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: stock.color,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    stock.ticker,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    stock.name,
+                    style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              children: [
+                _MetricChip(label: 'PE', value: '${stock.peRatio}x'),
+                const SizedBox(height: 4),
+                _MetricChip(label: 'ROE', value: '${stock.roe}%'),
+              ],
+            ),
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  stock.ticker,
+                  _formatPrice(stock.price),
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: isIDX ? 12 : 14,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  stock.name,
-                  style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary),
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isPositive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${isPositive ? '+' : ''}${stock.changePercent.toStringAsFixed(2)}%',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isPositive ? AppTheme.positive : AppTheme.negative,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            children: [
-              _MetricChip(label: 'PE', value: '${stock.peRatio}x'),
-              const SizedBox(height: 4),
-              _MetricChip(label: 'ROE', value: '${stock.roe}%'),
-            ],
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatPrice(stock.price),
-                style: GoogleFonts.inter(
-                  fontSize: isIDX ? 12 : 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isPositive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${isPositive ? '+' : ''}${stock.changePercent.toStringAsFixed(2)}%',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isPositive ? AppTheme.positive : AppTheme.negative,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

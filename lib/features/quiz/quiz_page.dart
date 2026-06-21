@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/providers/portfolio_provider.dart';
 import '../../shared/providers/quiz_provider.dart';
 import '../../shared/providers/nav_provider.dart';
+import '../../core/services/notification_service.dart';
 import 'widgets/error_banner.dart';
 import 'widgets/question_view.dart';
 import 'widgets/quiz_summary_view.dart';
@@ -115,6 +116,23 @@ class _QuizPageState extends State<QuizPage> {
                 )
               : null,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications_active_rounded),
+              tooltip: 'Demo Quiz Reminder',
+              onPressed: () {
+                NotificationService().scheduleQuizReminder();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Reminder scheduled! It will appear in 5 seconds. You can minimize the app now.',
+                      style: GoogleFonts.inter(),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              },
+            ),
             if (quiz.hasSession && quiz.isFinished)
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),

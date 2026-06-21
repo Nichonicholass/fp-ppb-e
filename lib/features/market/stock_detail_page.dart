@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/market_service.dart';
+import '../../core/services/currency_service.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/providers/portfolio_provider.dart';
@@ -207,8 +208,18 @@ class _StockDetailPageState extends State<StockDetailPage> {
 
   void _showBuySheet(BuildContext context) {
     final portfolio = context.read<PortfolioProvider>();
-    final livePrice = _detail!.price;
-    int qty = 1;
+    final livePriceRaw = _detail!.price; // IDR if IDX, USD if Global
+    final isIDX = widget.isIDX;
+    final rate = CurrencyService.currentRate; // USD→IDR rate
+    const int lotSize = 100; // 1 lot = 100 shares (IDX rule)
+
+    // If IDX: show price in IDR, balance in IDR, but store transaction in USD
+    // If Global: everything in USD
+    final balanceDisplay = isIDX
+        ? portfolio.balance * rate   // show IDR equivalent
+        : portfolio.balance;          // USD
+
+    int qty = 1; // lots for IDX, shares for Global
 
     showModalBottomSheet(
       context: context,
@@ -216,8 +227,20 @@ class _StockDetailPageState extends State<StockDetailPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setSheetState) {
-          final total = qty * livePrice;
-          final canAfford = total <= portfolio.balance;
+          final actualShares = isIDX ? qty * lotSize : qty;
+          final totalRaw = actualShares * livePriceRaw; // IDR if IDX, USD if Global
+          final totalUsd = isIDX
+              ? CurrencyService.idrToUsd(totalRaw)
+              : totalRaw;
+          final canAfford = totalUsd <= portfolio.balance;
+
+          // Format helpers
+          String fmtIdr(double v) {
+            final s = v.toStringAsFixed(0).replaceAllMapped(
+              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+            return 'Rp $s';
+          }
+          String fmtUsd(double v) => '\$${v.toStringAsFixed(2)}';
 
           return Container(
             decoration: const BoxDecoration(
@@ -225,9 +248,7 @@ class _StockDetailPageState extends State<StockDetailPage> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: EdgeInsets.fromLTRB(
-              24,
-              20,
-              24,
+              24, 20, 24,
               24 + MediaQuery.of(ctx).viewInsets.bottom,
             ),
             child: Column(
@@ -293,7 +314,7 @@ class _StockDetailPageState extends State<StockDetailPage> {
                     ),
                     const Spacer(),
                     Text(
-                      _formatPrice(livePrice),
+                      _formatPrice(livePriceRaw),
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -321,13 +342,27 @@ class _StockDetailPageState extends State<StockDetailPage> {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        '\$${portfolio.balance.toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            // Show IDR if IDX mode, USD otherwise
+                            isIDX ? fmtIdr(balanceDisplay) : fmtUsd(balanceDisplay),
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          if (isIDX)
+                            Text(
+                              '≈ ${fmtUsd(portfolio.balance)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: AppTheme.textTertiary,
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -336,7 +371,7 @@ class _StockDetailPageState extends State<StockDetailPage> {
 
                 // Quantity stepper
                 Text(
-                  'Shares',
+                  isIDX ? 'Lot' : 'Shares',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -354,13 +389,25 @@ class _StockDetailPageState extends State<StockDetailPage> {
                     ),
                     Expanded(
                       child: Center(
-                        child: Text(
-                          '$qty',
-                          style: GoogleFonts.inter(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                          ),
+                        child: Column(
+                          children: [
+                            Text(
+                              isIDX ? '$qty lot' : '$qty',
+                              style: GoogleFonts.inter(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            if (isIDX)
+                              Text(
+                                '= $actualShares saham',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AppTheme.textTertiary,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -383,13 +430,27 @@ class _StockDetailPageState extends State<StockDetailPage> {
                         color: AppTheme.textSecondary,
                       ),
                     ),
-                    Text(
-                      '\$${total.toStringAsFixed(2)}',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: canAfford ? AppTheme.textPrimary : AppTheme.negative,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          // Show in native currency
+                          isIDX ? fmtIdr(totalRaw) : fmtUsd(totalRaw),
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: canAfford ? AppTheme.textPrimary : AppTheme.negative,
+                          ),
+                        ),
+                        if (isIDX)
+                          Text(
+                            '≈ ${fmtUsd(totalUsd)}',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: AppTheme.textTertiary,
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -422,12 +483,21 @@ class _StockDetailPageState extends State<StockDetailPage> {
                   child: ElevatedButton(
                     onPressed: canAfford
                         ? () {
-                            portfolio.buyStock(widget.stock, qty, livePrice);
+                            // Always store in USD:
+                            // IDX: convert IDR price → USD for the transaction
+                            // Global: price already in USD
+                            final priceForTx = isIDX
+                                ? CurrencyService.idrToUsd(livePriceRaw)
+                                : livePriceRaw;
+                            // actualShares = lots * 100 for IDX, qty for Global
+                            portfolio.buyStock(widget.stock, actualShares, priceForTx);
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Bought $qty share${qty > 1 ? 's' : ''} of ${widget.stock.ticker}',
+                                  isIDX
+                                      ? 'Bought $qty lot ($actualShares saham) ${widget.stock.ticker}'
+                                      : 'Bought $qty share${qty > 1 ? 's' : ''} of ${widget.stock.ticker}',
                                   style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                                 ),
                                 backgroundColor: AppTheme.primary,
