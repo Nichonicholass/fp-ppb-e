@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/market_service.dart';
+import '../../core/services/currency_service.dart';
 import '../../core/dummy_data/app_data.dart' show Stock, MarketIndex;
 
 enum MarketMode { luarNegeri, dalamNegeri }
@@ -20,6 +21,11 @@ class MarketProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasData => _stocks.isNotEmpty;
   bool get isIDX => _mode == MarketMode.dalamNegeri;
+
+  /// Current USD→IDR rate being used (live or fallback)
+  double get usdToIdrRate => CurrencyService.currentRate;
+  /// True if the rate was fetched live, false if using fallback Rp 17.000
+  bool get isLiveRate => CurrencyService.isLiveRate;
 
   // ── Global (Luar Negeri) ──────────────────────────────────────────────────
   static const _stockMetaGlobal = [
@@ -78,6 +84,8 @@ class MarketProvider extends ChangeNotifier {
 
   MarketProvider({bool fetchOnCreate = true}) {
     if (fetchOnCreate) {
+      // Fetch exchange rate immediately on startup (runs in background)
+      CurrencyService.getUsdToIdr();
       fetchAll();
     }
   }
@@ -100,6 +108,9 @@ class MarketProvider extends ChangeNotifier {
     final indexMeta = isIDX ? _indexMetaIDX : _indexMetaGlobal;
 
     try {
+      // Fetch exchange rate in background (cached after first call)
+      CurrencyService.getUsdToIdr();
+
       final allSymbols = [
         ...stockMeta.map((m) => m.symbol),
         ...indexMeta.map((m) => m.symbol),
@@ -109,6 +120,7 @@ class MarketProvider extends ChangeNotifier {
 
       _stocks = stockMeta.map((meta) {
         final q = quotes[meta.symbol];
+        // IDX prices stay in IDR (native) — conversion handled at display/buy time
         return Stock(
           ticker: meta.symbol.replaceAll('.JK', ''),
           symbol: meta.symbol,

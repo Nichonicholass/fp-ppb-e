@@ -4,8 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
+import '../../core/services/currency_service.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/market_provider.dart';
+import '../../shared/providers/portfolio_provider.dart';
 import 'stock_detail_page.dart';
 
 class MarketPage extends StatefulWidget {
@@ -284,23 +286,76 @@ class _MarketPageState extends State<MarketPage> {
   }
 
   Widget _buildSectionHeader(BuildContext context, MarketProvider market) {
+    final portfolio = context.watch<PortfolioProvider>();
+    final rate = market.usdToIdrRate;
+    // Format IDR balance: $10000 * 17000 = Rp 170.000.000
+    final balanceIdr = portfolio.balance * rate;
+    final balanceIdrStr = balanceIdr.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.'
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _query.isEmpty ? 'Popular Stocks' : 'Results',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _query.isEmpty ? 'Popular Stocks' : 'Results',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              _MarketToggle(
+                selected: market.mode,
+                onChanged: (mode) => context.read<MarketProvider>().switchMode(mode),
+              ),
+            ],
+          ),
+          // Balance in IDR — only shown for IDX mode
+          if (market.isIDX) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.account_balance_wallet_rounded,
+                          size: 11, color: AppTheme.primary),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Saldo: Rp $balanceIdrStr',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Harga dalam IDR',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ],
             ),
-          ),
-          _MarketToggle(
-            selected: market.mode,
-            onChanged: (mode) => context.read<MarketProvider>().switchMode(mode),
-          ),
+          ],
         ],
       ),
     );
@@ -449,6 +504,7 @@ class _StockListTile extends StatelessWidget {
 
   String _formatPrice(double price) {
     if (isIDX) {
+      // IDX prices are in IDR (native)
       final formatted = price.toStringAsFixed(0).replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
         (m) => '${m[1]}.',

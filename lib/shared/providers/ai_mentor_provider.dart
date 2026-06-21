@@ -89,6 +89,23 @@ class AiMentorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> renameSession(String sessionId, String newTitle) async {
+    final session = _sessions.firstWhere((s) => s.id == sessionId,
+        orElse: () => throw StateError('Session not found'));
+    session.title = newTitle;
+    notifyListeners();
+
+    if (_userId == null) return;
+    try {
+      await _db
+          .collection('chat_sessions')
+          .doc(sessionId)
+          .update({'title': newTitle});
+    } catch (e) {
+      debugPrint('[AiMentorProvider] rename error: $e');
+    }
+  }
+
   Future<void> deleteSession(String sessionId) async {
     _sessions.removeWhere((s) => s.id == sessionId);
     if (_currentSession?.id == sessionId) {

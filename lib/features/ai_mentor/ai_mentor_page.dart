@@ -71,26 +71,36 @@ class _AiMentorPageState extends State<AiMentorPage> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor:
-          hasChat ? AppTheme.background : const Color(0xFF0A0F1A),
+      backgroundColor: AppTheme.background,
       drawer: const _ChatHistoryDrawer(),
       appBar: hasChat
           ? AppBar(
+              backgroundColor: AppTheme.background,
+              elevation: 0,
+              scrolledUnderElevation: 0.5,
+              shadowColor: AppTheme.divider,
+              leading: Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu_rounded),
+                  color: AppTheme.textSecondary,
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                ),
+              ),
               title: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF10B981), Color(0xFF059669)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.auto_awesome_rounded,
-                        color: Colors.white, size: 18),
+                        color: Colors.white, size: 17),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -98,7 +108,9 @@ class _AiMentorPageState extends State<AiMentorPage> {
                     children: [
                       Text('Fintell AI',
                           style: GoogleFonts.inter(
-                              fontSize: 16, fontWeight: FontWeight.w700)),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary)),
                       Text(
                         mentor.currentSession?.title ?? 'Financial Mentor',
                         maxLines: 1,
@@ -116,6 +128,7 @@ class _AiMentorPageState extends State<AiMentorPage> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add_comment_outlined),
+                  color: AppTheme.textSecondary,
                   tooltip: 'New chat',
                   onPressed: () =>
                       context.read<AiMentorProvider>().startNewSession(),
@@ -158,7 +171,7 @@ class _AiMentorPageState extends State<AiMentorPage> {
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             itemCount:
                 mentor.messages.length + (mentor.isLoading ? 1 : 0),
             itemBuilder: (ctx, i) {
@@ -182,7 +195,7 @@ class _AiMentorPageState extends State<AiMentorPage> {
   }
 }
 
-// ─── Landing View ─────────────────────────────────────────────────────────────
+// ─── Landing View (Gemini-style, light) ───────────────────────────────────────
 
 class _LandingView extends StatelessWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
@@ -199,10 +212,10 @@ class _LandingView extends StatelessWidget {
   });
 
   static const _suggestions = [
-    (Icons.trending_up, 'Explain dollar-cost averaging'),
-    (Icons.bar_chart, 'Best stocks for beginners?'),
-    (Icons.pie_chart, 'What is diversification?'),
-    (Icons.article, 'How to read a balance sheet?'),
+    (Icons.pie_chart_rounded, 'Coba analisis portofolio saya'),
+    (Icons.trending_up_rounded, 'Saham apa yang cocok untuk pemula?'),
+    (Icons.bar_chart_rounded, 'Jelaskan strategi dollar-cost averaging'),
+    (Icons.lightbulb_rounded, 'Bagaimana cara membaca laporan keuangan?'),
   ];
 
   static String _firstName(User? user) {
@@ -222,19 +235,20 @@ class _LandingView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Top bar
+          // ── Top bar ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.menu_rounded, color: Colors.white60),
+                  icon: const Icon(Icons.menu_rounded),
+                  color: AppTheme.textSecondary,
                   onPressed: () => scaffoldKey.currentState?.openDrawer(),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add_comment_outlined,
-                      color: Colors.white60),
+                  icon: const Icon(Icons.add_comment_outlined),
+                  color: AppTheme.textSecondary,
                   tooltip: 'New chat',
                   onPressed: () =>
                       context.read<AiMentorProvider>().startNewSession(),
@@ -243,148 +257,100 @@ class _LandingView extends StatelessWidget {
             ),
           ),
 
-          // Scrollable center content
+          // ── Centered scrollable content ──
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 48),
 
-                  // AI avatar + label
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF059669)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(13),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  const Color(0xFF10B981).withValues(alpha: 0.45),
-                              blurRadius: 16,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.auto_awesome_rounded,
-                            color: Colors.white, size: 22),
+                  // AI avatar
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Fintell AI',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white70,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded,
+                        color: Colors.white, size: 26),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Greeting
                   Text(
                     'Hello, $name!',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 30,
+                      fontSize: 32,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppTheme.textPrimary,
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     'What would you like to learn\nabout investing today?',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 15,
-                      color: Colors.white54,
-                      height: 1.55,
+                      color: AppTheme.textSecondary,
+                      height: 1.6,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 40),
 
-                  // Section label
-                  Text(
-                    'SUGGESTIONS',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white30,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 2×2 suggestion cards
+                  // Suggestion cards
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
-                    childAspectRatio: 1.55,
+                    childAspectRatio: 1.5,
                     children: _suggestions.map((s) {
                       final (icon, text) = s;
-                      return GestureDetector(
+                      return _SuggestionCard(
+                        icon: icon,
+                        text: text,
                         onTap: () => onSend(text),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF141B2D),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color: const Color(0xFF1F2A40)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(icon,
-                                  color: AppTheme.primary, size: 20),
-                              const Spacer(),
-                              Text(
-                                text,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5,
-                                  color: Colors.white70,
-                                  height: 1.35,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
 
-          // Error bar (if any)
+          // ── Error bar ──
           if (error != null)
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.red.shade900.withValues(alpha: 0.5),
+              color: Colors.red.shade50,
               child: Text(
                 error!,
                 style: GoogleFonts.inter(
-                    fontSize: 12, color: Colors.red.shade300),
+                    fontSize: 12, color: Colors.red.shade700),
               ),
             ),
 
-          // Gemini-style pill input
+          // ── Input bar (Gemini-style pill, light) ──
           _LandingInputBar(controller: controller, onSend: onSend),
         ],
       ),
@@ -392,7 +358,62 @@ class _LandingView extends StatelessWidget {
   }
 }
 
-// ─── Landing Input Bar (pill, dark) ──────────────────────────────────────────
+class _SuggestionCard extends StatefulWidget {
+  final IconData icon;
+  final String text;
+  final VoidCallback onTap;
+  const _SuggestionCard(
+      {required this.icon, required this.text, required this.onTap});
+
+  @override
+  State<_SuggestionCard> createState() => _SuggestionCardState();
+}
+
+class _SuggestionCardState extends State<_SuggestionCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _hovered ? AppTheme.primaryLight : AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _hovered ? AppTheme.primary : AppTheme.divider,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(widget.icon, color: AppTheme.primary, size: 20),
+              const Spacer(),
+              Text(
+                widget.text,
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  color: AppTheme.textPrimary,
+                  height: 1.35,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Landing Input Bar (pill, light) ─────────────────────────────────────────
 
 class _LandingInputBar extends StatelessWidget {
   final TextEditingController controller;
@@ -405,14 +426,20 @@ class _LandingInputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding:
-          EdgeInsets.fromLTRB(16, 10, 16, 12 + bottomPadding),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + bottomPadding),
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 6, 8, 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF141B2D),
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: const Color(0xFF252D42)),
+          border: Border.all(color: AppTheme.divider),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -420,8 +447,8 @@ class _LandingInputBar extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
-                style:
-                    GoogleFonts.inter(fontSize: 14, color: Colors.white),
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: AppTheme.textPrimary),
                 maxLines: 4,
                 minLines: 1,
                 textInputAction: TextInputAction.send,
@@ -432,7 +459,7 @@ class _LandingInputBar extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Ask Fintell AI...',
                   hintStyle: GoogleFonts.inter(
-                      fontSize: 14, color: Colors.white38),
+                      fontSize: 14, color: AppTheme.textTertiary),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -468,7 +495,7 @@ class _LandingInputBar extends StatelessWidget {
   }
 }
 
-// ─── History Drawer ──────────────────────────────────────────────────────────
+// ─── History Drawer (light) ───────────────────────────────────────────────────
 
 class _ChatHistoryDrawer extends StatelessWidget {
   const _ChatHistoryDrawer();
@@ -478,23 +505,35 @@ class _ChatHistoryDrawer extends StatelessWidget {
     return Consumer<AiMentorProvider>(
       builder: (context, mentor, _) {
         return Drawer(
+          backgroundColor: AppTheme.background,
           child: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Header
                 Container(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 14),
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    border: Border(
+                      bottom: BorderSide(color: AppTheme.divider),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.auto_awesome_rounded,
-                          color: Colors.white, size: 20),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF059669)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            color: Colors.white, size: 16),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -502,13 +541,13 @@ class _ChatHistoryDrawer extends StatelessWidget {
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: AppTheme.textPrimary,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add_rounded,
-                            color: Colors.white),
+                        icon: const Icon(Icons.add_rounded),
+                        color: AppTheme.textSecondary,
                         tooltip: 'New chat',
                         onPressed: () {
                           context
@@ -558,6 +597,8 @@ class _ChatHistoryDrawer extends StatelessWidget {
                               },
                               onDelete: () =>
                                   _confirmDelete(context, mentor, session),
+                              onRename: () =>
+                                  _confirmRename(context, mentor, session),
                             );
                           },
                         ),
@@ -575,18 +616,21 @@ class _ChatHistoryDrawer extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.background,
         title: Text('Delete chat?',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
         content: Text(
           '"${session.title}"',
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textSecondary),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.inter()),
+            child: Text('Cancel',
+                style: GoogleFonts.inter(color: AppTheme.textSecondary)),
           ),
           TextButton(
             onPressed: () {
@@ -600,6 +644,57 @@ class _ChatHistoryDrawer extends StatelessWidget {
       ),
     );
   }
+
+  void _confirmRename(BuildContext context, AiMentorProvider mentor,
+      ChatSession session) {
+    final controller = TextEditingController(text: session.title);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.background,
+        title: Text('Rename chat',
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Enter new name...',
+            hintStyle: GoogleFonts.inter(color: AppTheme.textTertiary),
+            counterStyle: GoogleFonts.inter(
+                fontSize: 11, color: AppTheme.textTertiary),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: AppTheme.primary),
+            ),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: AppTheme.divider),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: GoogleFonts.inter(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                mentor.renameSession(session.id, newName);
+              }
+              Navigator.pop(ctx);
+            },
+            child: Text('Save',
+                style: GoogleFonts.inter(
+                    color: AppTheme.primary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SessionTile extends StatelessWidget {
@@ -607,12 +702,14 @@ class _SessionTile extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onRename;
 
   const _SessionTile({
     required this.session,
     required this.isActive,
     required this.onTap,
     required this.onDelete,
+    required this.onRename,
   });
 
   @override
@@ -629,7 +726,7 @@ class _SessionTile extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: isActive ? AppTheme.primary : AppTheme.surface,
+                color: isActive ? AppTheme.primary : AppTheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -667,10 +764,22 @@ class _SessionTile extends StatelessWidget {
                 ],
               ),
             ),
+            // Rename button
+            IconButton(
+              icon: const Icon(Icons.drive_file_rename_outline_rounded, size: 17),
+              color: AppTheme.textTertiary,
+              onPressed: onRename,
+              tooltip: 'Rename',
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+            // Delete button
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded, size: 17),
               color: AppTheme.textTertiary,
               onPressed: onDelete,
+              tooltip: 'Delete',
               padding: EdgeInsets.zero,
               constraints:
                   const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -700,7 +809,7 @@ class _SessionTile extends StatelessWidget {
   }
 }
 
-// ─── Chat Bubble ─────────────────────────────────────────────────────────────
+// ─── Chat Bubble (light) ──────────────────────────────────────────────────────
 
 class _ChatBubble extends StatelessWidget {
   final ChatMessage message;
@@ -710,7 +819,7 @@ class _ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.isUser;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -741,6 +850,9 @@ class _ChatBubble extends StatelessWidget {
                       horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: isUser ? AppTheme.primary : AppTheme.surface,
+                    border: isUser
+                        ? null
+                        : Border.all(color: AppTheme.divider),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -777,7 +889,7 @@ class _ChatBubble extends StatelessWidget {
   }
 }
 
-// ─── Typing Indicator ─────────────────────────────────────────────────────────
+// ─── Typing Indicator (light) ─────────────────────────────────────────────────
 
 class _TypingIndicator extends StatelessWidget {
   const _TypingIndicator();
@@ -785,7 +897,7 @@ class _TypingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -806,6 +918,7 @@ class _TypingIndicator extends StatelessWidget {
                 horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppTheme.surface,
+              border: Border.all(color: AppTheme.divider),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -849,7 +962,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
+    _animation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
     Future.delayed(Duration(milliseconds: widget.delay), () {
@@ -870,7 +983,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
       child: Container(
         width: 7,
         height: 7,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppTheme.textTertiary,
           shape: BoxShape.circle,
         ),
@@ -879,7 +992,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
   }
 }
 
-// ─── Chat Input Bar ───────────────────────────────────────────────────────────
+// ─── Chat Input Bar (light) ───────────────────────────────────────────────────
 
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
@@ -891,39 +1004,61 @@ class _InputBar extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
       padding:
-          EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPadding),
+          EdgeInsets.fromLTRB(16, 10, 16, 12 + bottomPadding),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppTheme.divider)),
+        color: AppTheme.background,
+        border: const Border(top: BorderSide(color: AppTheme.divider)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              style: GoogleFonts.inter(fontSize: 14),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
-              decoration: const InputDecoration(
-                  hintText: 'Ask Fintell AI anything...'),
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onSend,
-            child: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
-                borderRadius: BorderRadius.circular(13),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 6, 8, 6),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: AppTheme.divider),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: AppTheme.textPrimary),
+                maxLines: 4,
+                minLines: 1,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => onSend(),
+                decoration: InputDecoration(
+                  hintText: 'Ask Fintell AI anything...',
+                  hintStyle: GoogleFonts.inter(
+                      fontSize: 14, color: AppTheme.textTertiary),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 10),
+                  filled: false,
+                  isDense: true,
+                ),
               ),
-              child: const Icon(Icons.send_rounded,
-                  color: Colors.white, size: 18),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onSend,
+              child: Container(
+                width: 38,
+                height: 38,
+                margin: const EdgeInsets.only(bottom: 2),
+                decoration: const BoxDecoration(
+                  color: AppTheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_upward_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

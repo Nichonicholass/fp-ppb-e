@@ -86,9 +86,9 @@ class MainShell extends StatelessWidget {
   static const List<Widget> _pages = [
     MarketPage(),
     PortfolioPage(),
+    AiMentorPage(),
     WatchlistPage(),
     QuizPage(),
-    AiMentorPage(),
   ];
 
   @override
@@ -96,7 +96,7 @@ class MainShell extends StatelessWidget {
     final nav = context.watch<NavProvider>();
     final quiz = context.watch<QuizProvider>();
     final isQuizInProgress = quiz.hasSession && !quiz.isFinished;
-    final isQuizTabActive = nav.currentIndex == 3;
+    final isQuizTabActive = nav.currentIndex == 4;
     final shouldHideBottomNav = isQuizInProgress && isQuizTabActive;
 
     return Scaffold(
@@ -112,39 +112,193 @@ class MainShell extends StatelessWidget {
 class _FintellBottomNav extends StatelessWidget {
   const _FintellBottomNav();
 
+  static const _items = [
+    (Icons.bar_chart_rounded, 'Market', 0),
+    (Icons.account_balance_wallet_rounded, 'Portfolio', 1),
+    // index 2 = AI Mentor (center button)
+    (Icons.bookmark_rounded, 'Watchlist', 3),
+    (Icons.quiz_rounded, 'Quiz', 4),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavProvider>();
+    final isAiActive = nav.currentIndex == 2;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: nav.currentIndex,
-        onTap: nav.setIndex,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Market',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_rounded),
-            label: 'Portfolio',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bookmark_rounded),
-            label: 'Watchlist',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Quiz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome_rounded),
-            label: 'AI Mentor',
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -2),
           ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 62,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // ── Regular nav items (2 left + 2 right) ──
+              Row(
+                children: [
+                  // Left 2 items
+                  ..._items.take(2).map((item) {
+                    final (icon, label, idx) = item;
+                    final active = nav.currentIndex == idx;
+                    return Expanded(
+                      child: _NavItem(
+                        icon: icon,
+                        label: label,
+                        active: active,
+                        onTap: () => nav.setIndex(idx),
+                      ),
+                    );
+                  }),
+                  // Center spacer for the floating button
+                  const Expanded(child: SizedBox()),
+                  // Right 2 items
+                  ..._items.skip(2).map((item) {
+                    final (icon, label, idx) = item;
+                    final active = nav.currentIndex == idx;
+                    return Expanded(
+                      child: _NavItem(
+                        icon: icon,
+                        label: label,
+                        active: active,
+                        onTap: () => nav.setIndex(idx),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+
+              // ── Center AI Mentor floating button ──
+              Positioned(
+                bottom: 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => nav.setIndex(2),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: isAiActive
+                            ? const LinearGradient(
+                                colors: [Color(0xFF10B981), Color(0xFF047857)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : const LinearGradient(
+                                colors: [Color(0xFF34D399), Color(0xFF10B981)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981)
+                                .withValues(alpha: isAiActive ? 0.55 : 0.38),
+                            blurRadius: isAiActive ? 20 : 14,
+                            spreadRadius: isAiActive ? 2 : 0,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── AI Mentor label below center button ──
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'AI Mentor',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: isAiActive
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isAiActive
+                          ? const Color(0xFF10B981)
+                          : Colors.grey.shade500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? const Color(0xFF10B981) : Colors.grey.shade500;
+    return InkWell(
+      onTap: onTap,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: active
+                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
