@@ -18,7 +18,6 @@ import 'features/auth/auth_page.dart';
 import 'features/market/market_page.dart';
 import 'features/portfolio/portfolio_page.dart';
 import 'features/watchlist/watchlist_page.dart';
-import 'features/goals/goals_page.dart';
 import 'features/quiz/quiz_page.dart';
 import 'features/ai_mentor/ai_mentor_page.dart';
 
@@ -88,7 +87,6 @@ class MainShell extends StatelessWidget {
     MarketPage(),
     PortfolioPage(),
     WatchlistPage(),
-    GoalsPage(),
     QuizPage(),
     AiMentorPage(),
   ];
@@ -98,7 +96,7 @@ class MainShell extends StatelessWidget {
     final nav = context.watch<NavProvider>();
     final quiz = context.watch<QuizProvider>();
     final isQuizInProgress = quiz.hasSession && !quiz.isFinished;
-    final isQuizTabActive = nav.currentIndex == 4;
+    final isQuizTabActive = nav.currentIndex == 3;
     final shouldHideBottomNav = isQuizInProgress && isQuizTabActive;
 
     return Scaffold(
@@ -137,10 +135,6 @@ class _FintellBottomNav extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.bookmark_rounded),
             label: 'Watchlist',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.flag_rounded),
-            label: 'Goals',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),

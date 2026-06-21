@@ -41,28 +41,6 @@ class OwnedStock {
   double get gainLossPercent => ((stock.price - avgPrice) / avgPrice) * 100;
 }
 
-class Goal {
-  final String title;
-  final String subtitle;
-  final double target;
-  final double current;
-  final IconData icon;
-  final Color color;
-  final String deadline;
-
-  const Goal({
-    required this.title,
-    required this.subtitle,
-    required this.target,
-    required this.current,
-    required this.icon,
-    required this.color,
-    required this.deadline,
-  });
-
-  double get progress => (current / target).clamp(0.0, 1.0);
-}
-
 class ChatMessage {
   final String text;
   final bool isUser;
@@ -336,45 +314,6 @@ class AppData {
       roe: 8.7,
       sector: 'Healthcare',
       color: Color(0xFF0050A0),
-    ),
-  ];
-
-  static const List<Goal> goals = [
-    Goal(
-      title: 'Emergency Fund',
-      subtitle: '6 months of expenses saved',
-      target: 30000,
-      current: 18500,
-      icon: Icons.security_rounded,
-      color: Color(0xFF10B981),
-      deadline: 'Dec 2025',
-    ),
-    Goal(
-      title: 'Vacation to Japan',
-      subtitle: 'Tokyo & Osaka trip',
-      target: 8000,
-      current: 5200,
-      icon: Icons.flight_rounded,
-      color: Color(0xFF6366F1),
-      deadline: 'Aug 2025',
-    ),
-    Goal(
-      title: 'New Laptop',
-      subtitle: 'MacBook Pro M3',
-      target: 2500,
-      current: 2500,
-      icon: Icons.laptop_mac_rounded,
-      color: Color(0xFF0EA5E9),
-      deadline: 'Achieved!',
-    ),
-    Goal(
-      title: 'Down Payment',
-      subtitle: 'House down payment fund',
-      target: 100000,
-      current: 12000,
-      icon: Icons.home_rounded,
-      color: Color(0xFFF59E0B),
-      deadline: 'Dec 2028',
     ),
   ];
 
