@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../core/services/currency_service.dart';
@@ -104,6 +105,10 @@ class _PortfolioPageState extends State<PortfolioPage> {
               const _EmptyHoldings(),
             const SizedBox(height: 24),
             _TransactionHistorySection(showIdr: _showIdr, rate: rate),
+            const SizedBox(height: 24),
+            // ── DEV ONLY: Crashlytics Test — Remove before production ──
+            _CrashTestButton(),
+            // ──────────────────────────────────────────────────────────
             const SizedBox(height: 24),
           ],
         ),
@@ -1134,6 +1139,105 @@ class _TransactionRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── DEV ONLY: Firebase Crashlytics Test Widget ────────────────────────────────
+// Remove _CrashTestButton() from portfolio_page.dart build() before production.
+
+class _CrashTestButton extends StatelessWidget {
+  const _CrashTestButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.red.shade300, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        color: Colors.red.shade50,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bug_report_rounded, color: Colors.red.shade600, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'DEV TOOLS — Remove before production',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.warning_amber_rounded, size: 16),
+                  label: const Text('Fatal Crash'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                    textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => FirebaseCrashlytics.instance.crash(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.info_outline_rounded, size: 16),
+                  label: const Text('Non-Fatal'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade600,
+                    foregroundColor: Colors.white,
+                    textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    FirebaseCrashlytics.instance.recordError(
+                      Exception('Test non-fatal error from Fintell Portfolio'),
+                      StackTrace.current,
+                      fatal: false,
+                      reason: 'Manual test trigger via DEV button',
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '✅ Non-fatal error sent to Crashlytics',
+                          style: GoogleFonts.inter(fontSize: 13),
+                        ),
+                        backgroundColor: Colors.orange.shade700,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Fatal: kills app → relaunch → check Firebase Console\nNon-Fatal: stays open → snackbar confirms → check Console',
+            style: GoogleFonts.inter(fontSize: 10, color: Colors.red.shade400, height: 1.5),
+          ),
+        ],
       ),
     );
   }
