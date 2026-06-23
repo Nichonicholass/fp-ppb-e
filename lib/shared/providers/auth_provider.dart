@@ -43,6 +43,11 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> signOut() => _service.signOut();
 
+  Future<void> updateProfilePicture(String url) async {
+    await _service.updateProfilePicture(url);
+    notifyListeners();
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();

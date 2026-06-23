@@ -35,4 +35,15 @@ class AuthService {
   }
 
   Future<void> signOut() => _auth.signOut();
+
+  Future<void> updateProfilePicture(String url) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.updatePhotoURL(url);
+      await _db.collection('users').doc(user.uid).set(
+        {'photoUrl': url},
+        SetOptions(merge: true),
+      );
+    }
+  }
 }

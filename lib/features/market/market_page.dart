@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../core/services/currency_service.dart';
+import '../../core/services/storage_service.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/market_provider.dart';
 import '../../shared/providers/portfolio_provider.dart';
@@ -156,14 +159,17 @@ class _MarketPageState extends State<MarketPage> {
             child: CircleAvatar(
               backgroundColor: AppTheme.primaryLight,
               radius: 22,
-              child: Text(
-                initial,
-                style: GoogleFonts.inter(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
+              backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+              child: user?.photoURL == null
+                  ? Text(
+                      initial,
+                      style: GoogleFonts.inter(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    )
+                  : null,
             ),
           ),
         ],
@@ -172,64 +178,156 @@ class _MarketPageState extends State<MarketPage> {
   }
 
   void _showProfileSheet(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    bool isUploading = false;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.divider,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final user = FirebaseAuth.instance.currentUser;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              user?.email ?? '',
-              style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 20),
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () async {
-                Navigator.pop(context);
-                await context.read<AuthProvider>().signOut();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 20),
+                Text(
+                  user?.email ?? '',
+                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.logout_rounded, color: AppTheme.negative, size: 20),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Sign Out',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.negative,
+                const SizedBox(height: 20),
+                if (isUploading)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                      if (pickedFile != null && user != null) {
+                        setModalState(() => isUploading = true);
+                        try {
+                          final storageService = StorageService();
+                          final file = File(pickedFile.path);
+                          final url = await storageService.uploadProfilePicture(user.uid, file);
+                          
+                          // Update auth profile
+                          if (ctx.mounted) {
+                            await ctx.read<AuthProvider>().updateProfilePicture(url);
+                          }
+                          await user.reload(); // Reload to get the new photoUrl
+                          
+                          if (mounted) setState(() {});
+                          
+                          if (ctx.mounted) {
+                            Navigator.pop(context); // Close bottom sheet
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Success'),
+                                content: const Text('Profile picture updated successfully!'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  )
+                                ],
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            Navigator.pop(context); // Close bottom sheet
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Upload Failed'),
+                                content: Text('Error: $e\n\nPastikan bucket "profiles" di Supabase sudah dibuat dan diset ke Public.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  )
+                                ],
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (ctx.mounted) {
+                            setModalState(() => isUploading = false);
+                          }
+                        }
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.camera_alt_rounded, color: AppTheme.primary, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Update Profile Picture',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
+                const SizedBox(height: 12),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await context.read<AuthProvider>().signOut();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.logout_rounded, color: AppTheme.negative, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Sign Out',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.negative,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
