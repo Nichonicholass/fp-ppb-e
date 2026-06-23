@@ -288,7 +288,7 @@ class PortfolioProvider extends ChangeNotifier {
         claimed: true,
         balance: newBalance,
       );
-    }) as _QuizRewardTransactionResult;
+    });
 
     if (result.claimed) {
       _balance = result.balance;

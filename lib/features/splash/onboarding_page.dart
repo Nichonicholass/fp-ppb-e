@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
-import '../auth/auth_page.dart';
 
 class OnboardingPage extends StatefulWidget {
   final VoidCallback onFinish;

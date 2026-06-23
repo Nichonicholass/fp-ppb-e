@@ -82,6 +82,10 @@ class AiMentorProvider extends ChangeNotifier {
     _service.resetSession([]);
     notifyListeners();
   }
+  
+  void updateMarketMode(bool isIDX) {
+    _service.setMarketContext(isIDX);
+  }
 
   void switchSession(ChatSession session) {
     _currentSession = session;

@@ -7,15 +7,36 @@ import 'package:http/http.dart' as http;
 class AiMentorService {
   static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
   static const _model = 'llama-3.3-70b-versatile';
-  static const _systemInstruction =
+
+  static const _systemInstructionGlobal =
       'You are Fintell AI, a helpful and friendly financial literacy mentor. '
       'Give clear, educational answers about investing, stocks, personal finance, '
-      'and financial concepts. Keep responses concise (2–4 paragraphs max). '
+      'and financial concepts in the US and global markets (USD currency). '
+      'Keep responses concise (2–4 paragraphs max). '
       'When the user shares portfolio data, use it to give personalised advice. '
       'Never recommend specific stocks as guaranteed buys; always note that '
       'investing carries risk. Use plain text — no markdown like ** or ##.';
 
+  static const _systemInstructionIDX =
+      'You are Fintell AI, a helpful and friendly financial literacy mentor '
+      'specialising in the Indonesian IDX (Bursa Efek Indonesia) stock market. '
+      'Give clear, educational answers about investing in Indonesian stocks '
+      '(IDR currency), OJK regulations, Reksa Dana (mutual funds), saham, '
+      'obligasi, and Indonesian personal finance concepts. '
+      'Keep responses concise (2–4 paragraphs max). '
+      'When the user shares portfolio data, use it to give personalised advice. '
+      'Never recommend specific stocks as guaranteed buys; always note that '
+      'investing carries risk. Use plain text — no markdown like ** or ##.';
+
+  String _systemInstruction = _systemInstructionGlobal;
+
   final List<Map<String, String>> _history = [];
+
+  /// Call this whenever the user switches between Global and IDX market mode.
+  void setMarketContext(bool isIDX) {
+    _systemInstruction =
+        isIDX ? _systemInstructionIDX : _systemInstructionGlobal;
+  }
 
   void resetSession(List<Map<String, String>> history) {
     _history
