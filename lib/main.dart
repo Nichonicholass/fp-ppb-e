@@ -19,6 +19,7 @@ import 'shared/providers/portfolio_provider.dart';
 import 'shared/providers/quiz_provider.dart';
 import 'shared/providers/watchlist_provider.dart';
 import 'shared/providers/ai_mentor_provider.dart';
+import 'shared/providers/theme_provider.dart';
 import 'features/auth/auth_page.dart';
 import 'features/splash/onboarding_page.dart';
 import 'features/market/market_page.dart';
@@ -81,6 +82,7 @@ void main() async {
           ChangeNotifierProvider(create: (_) => QuizProvider()),
           ChangeNotifierProvider(create: (_) => WatchlistProvider()),
           ChangeNotifierProvider(create: (_) => AiMentorProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ],
         child: const FintellApp(),
       ),
@@ -95,10 +97,21 @@ class FintellApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final systemBrightness = MediaQuery.platformBrightnessOf(context);
+    
+    if (themeProvider.themeMode == ThemeMode.system) {
+      AppTheme.isDark = systemBrightness == Brightness.dark;
+    } else {
+      AppTheme.isDark = themeProvider.themeMode == ThemeMode.dark;
+    }
+
     return MaterialApp(
       title: 'Fintell',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeProvider.themeMode,
       home: const SplashWrapper(),
     );
   }
@@ -137,7 +150,7 @@ class _SplashWrapperState extends State<SplashWrapper> {
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.show_chart_rounded, size: 48, color: AppTheme.primary),
+                child: Icon(Icons.show_chart_rounded, size: 48, color: AppTheme.primary),
               ),
               const SizedBox(height: 16),
               Text(

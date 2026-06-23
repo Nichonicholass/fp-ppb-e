@@ -61,7 +61,7 @@ class QuestionView extends StatelessWidget {
                   width: constraints.maxWidth * progress,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [AppTheme.primary, Color(0xFF6366F1)],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,

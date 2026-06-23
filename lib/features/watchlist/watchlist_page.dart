@@ -183,7 +183,7 @@ class _WatchlistPageState extends State<WatchlistPage> {
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.add_rounded,
                 color: AppTheme.primary,
                 size: 18,
@@ -432,7 +432,7 @@ class _ControlMenu<T> extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 16,
               color: AppTheme.textSecondary,
@@ -546,7 +546,7 @@ class _SwipeBackground extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.delete_outline_rounded,
             color: AppTheme.negative,
             size: 22,
@@ -588,7 +588,7 @@ class _EmptyState extends StatelessWidget {
               color: AppTheme.primaryLight,
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.bookmark_outline_rounded,
               color: AppTheme.primary,
               size: 36,
@@ -913,7 +913,7 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
                     child: DropdownButton<String>(
                       value: targetList.id,
                       dropdownColor: Colors.white,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: AppTheme.primary,
                         size: 18,
@@ -956,14 +956,14 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
               },
               decoration: InputDecoration(
                 hintText: 'Search stock name or ticker...',
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   Icons.search_rounded,
                   color: AppTheme.textTertiary,
                   size: 20,
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear_rounded,
                           color: AppTheme.textTertiary,
                           size: 18,
@@ -982,7 +982,7 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
           const SizedBox(height: 16),
           Expanded(
             child: marketProvider.isLoading
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(color: AppTheme.primary),
                   )
                 : filteredStocks.isEmpty
@@ -990,7 +990,7 @@ class _AddStockBottomSheetState extends State<_AddStockBottomSheet> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.search_off_rounded,
                               color: AppTheme.textTertiary,
                               size: 48,
@@ -1159,7 +1159,7 @@ class _BottomSheetStockTile extends StatelessWidget {
                           color: AppTheme.primaryLight,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add_rounded,
                           color: AppTheme.primary,
                           size: 18,

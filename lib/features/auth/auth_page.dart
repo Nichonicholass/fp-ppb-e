@@ -156,7 +156,7 @@ class _AuthPageState extends State<AuthPage> {
     return TextFormField(
       controller: _emailCtrl,
       keyboardType: TextInputType.emailAddress,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         hintText: 'Email address',
         prefixIcon: Icon(Icons.email_outlined, size: 20, color: AppTheme.textSecondary),
       ),
@@ -174,7 +174,7 @@ class _AuthPageState extends State<AuthPage> {
       obscureText: _obscurePassword,
       decoration: InputDecoration(
         hintText: 'Password',
-        prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: AppTheme.textSecondary),
+        prefixIcon: Icon(Icons.lock_outline_rounded, size: 20, color: AppTheme.textSecondary),
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -198,7 +198,7 @@ class _AuthPageState extends State<AuthPage> {
       obscureText: _obscureConfirm,
       decoration: InputDecoration(
         hintText: 'Confirm password',
-        prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: AppTheme.textSecondary),
+        prefixIcon: Icon(Icons.lock_outline_rounded, size: 20, color: AppTheme.textSecondary),
         suffixIcon: IconButton(
           icon: Icon(
             _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -225,7 +225,7 @@ class _AuthPageState extends State<AuthPage> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.negative, size: 18),
+          Icon(Icons.error_outline_rounded, color: AppTheme.negative, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

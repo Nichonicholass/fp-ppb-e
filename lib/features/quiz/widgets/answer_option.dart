@@ -105,7 +105,7 @@ class _AnswerOptionState extends State<AnswerOption> {
           child: Row(
             children: [
               isPendingSelection
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(

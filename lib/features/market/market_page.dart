@@ -10,6 +10,7 @@ import '../../core/services/storage_service.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/market_provider.dart';
 import '../../shared/providers/portfolio_provider.dart';
+import '../../shared/providers/theme_provider.dart';
 import 'stock_detail_page.dart';
 
 class MarketPage extends StatefulWidget {
@@ -94,7 +95,7 @@ class _MarketPageState extends State<MarketPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.search_off_rounded,
+                        Icon(Icons.search_off_rounded,
                             size: 48, color: AppTheme.textSecondary),
                         const SizedBox(height: 12),
                         Text(
@@ -285,7 +286,7 @@ class _MarketPageState extends State<MarketPage> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.camera_alt_rounded, color: AppTheme.primary, size: 20),
+                          Icon(Icons.camera_alt_rounded, color: AppTheme.primary, size: 20),
                           const SizedBox(width: 12),
                           Text(
                             'Update Profile Picture',
@@ -299,7 +300,43 @@ class _MarketPageState extends State<MarketPage> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                Text(
+                  'Appearance',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    children: [
+                      _ThemeOption(
+                        mode: ThemeMode.system,
+                        icon: Icons.brightness_auto_rounded,
+                        label: 'System',
+                      ),
+                      _ThemeOption(
+                        mode: ThemeMode.light,
+                        icon: Icons.light_mode_rounded,
+                        label: 'Light',
+                      ),
+                      _ThemeOption(
+                        mode: ThemeMode.dark,
+                        icon: Icons.dark_mode_rounded,
+                        label: 'Dark',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () async {
@@ -314,7 +351,7 @@ class _MarketPageState extends State<MarketPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.logout_rounded, color: AppTheme.negative, size: 20),
+                        Icon(Icons.logout_rounded, color: AppTheme.negative, size: 20),
                         const SizedBox(width: 12),
                         Text(
                           'Sign Out',
@@ -380,7 +417,7 @@ class _MarketPageState extends State<MarketPage> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search_rounded,
+          prefixIcon: Icon(Icons.search_rounded,
               color: AppTheme.textSecondary, size: 20),
           hintText: 'Search stocks, ETFs...',
           suffixIcon: _query.isNotEmpty
@@ -441,7 +478,7 @@ class _MarketPageState extends State<MarketPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.account_balance_wallet_rounded,
+                      Icon(Icons.account_balance_wallet_rounded,
                           size: 11, color: AppTheme.primary),
                       const SizedBox(width: 5),
                       Text(
@@ -844,7 +881,7 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.textSecondary),
+          Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.textSecondary),
           const SizedBox(height: 12),
           Text(
             'Failed to load market data',
@@ -949,6 +986,66 @@ class _StaleBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThemeOption extends StatelessWidget {
+  final ThemeMode mode;
+  final IconData icon;
+  final String label;
+
+  const _ThemeOption({
+    required this.mode,
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isSelected = themeProvider.themeMode == mode;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => themeProvider.updateThemeMode(mode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? AppTheme.textPrimary : AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

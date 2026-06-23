@@ -594,7 +594,7 @@ class _EmptyHoldings extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
-          const Icon(Icons.show_chart_rounded, size: 48, color: AppTheme.textSecondary),
+          Icon(Icons.show_chart_rounded, size: 48, color: AppTheme.textSecondary),
           const SizedBox(height: 12),
           Text(
             'No holdings yet',
@@ -985,7 +985,7 @@ class _TransactionHistorySection extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.receipt_long_rounded,
                   size: 36,
                   color: AppTheme.textSecondary,
@@ -1011,7 +1011,7 @@ class _TransactionHistorySection extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: recent.length,
-              separatorBuilder: (_, _) => const Divider(
+              separatorBuilder: (_, _) => Divider(
                 height: 1,
                 indent: 16,
                 endIndent: 16,
@@ -1130,7 +1130,7 @@ class _TransactionRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(width: 8),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 16,
                   color: AppTheme.textTertiary,

@@ -497,7 +497,7 @@ class _LandingInputBar extends StatelessWidget {
                 width: 38,
                 height: 38,
                 margin: const EdgeInsets.only(bottom: 2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppTheme.primary,
                   shape: BoxShape.circle,
                 ),
@@ -530,7 +530,7 @@ class _ChatHistoryDrawer extends StatelessWidget {
                 // Header
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 16, 8, 14),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(color: AppTheme.divider),
                     ),
@@ -1024,7 +1024,7 @@ class _InputBar extends StatelessWidget {
           EdgeInsets.fromLTRB(16, 10, 16, 12 + bottomPadding),
       decoration: BoxDecoration(
         color: AppTheme.background,
-        border: const Border(top: BorderSide(color: AppTheme.divider)),
+        border: Border(top: BorderSide(color: AppTheme.divider)),
       ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 6, 8, 6),
@@ -1066,7 +1066,7 @@ class _InputBar extends StatelessWidget {
                 width: 38,
                 height: 38,
                 margin: const EdgeInsets.only(bottom: 2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppTheme.primary,
                   shape: BoxShape.circle,
                 ),

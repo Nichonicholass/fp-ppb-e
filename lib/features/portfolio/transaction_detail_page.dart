@@ -187,18 +187,18 @@ class _DetailsCard extends StatelessWidget {
       child: Column(
         children: [
           _DetailRow(label: 'Shares', value: '${tx.shares} shares'),
-          const Divider(height: 1, color: AppTheme.divider),
+          Divider(height: 1, color: AppTheme.divider),
           _DetailRow(
             label: 'Price per Share',
             value: '\$${tx.price.toStringAsFixed(2)}',
           ),
-          const Divider(height: 1, color: AppTheme.divider),
+          Divider(height: 1, color: AppTheme.divider),
           _DetailRow(label: 'Date', value: dateStr),
-          const Divider(height: 1, color: AppTheme.divider),
+          Divider(height: 1, color: AppTheme.divider),
           _DetailRow(label: 'Time', value: timeStr),
-          const Divider(height: 1, color: AppTheme.divider),
+          Divider(height: 1, color: AppTheme.divider),
           _DetailRow(label: 'Sector', value: tx.stock.sector),
-          const Divider(height: 1, color: AppTheme.divider),
+          Divider(height: 1, color: AppTheme.divider),
           _DetailRow(
             label: 'Type',
             value: isBuy ? 'Buy' : 'Sell',

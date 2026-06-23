@@ -459,7 +459,7 @@ class _StockDetailPageState extends State<StockDetailPage> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded,
+                      Icon(Icons.warning_amber_rounded,
                           size: 14, color: AppTheme.negative),
                       const SizedBox(width: 4),
                       Text(
@@ -804,7 +804,7 @@ class _StockDetailPageState extends State<StockDetailPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded,
+          Icon(Icons.wifi_off_rounded,
               size: 48, color: AppTheme.textSecondary),
           const SizedBox(height: 12),
           Text(
@@ -896,7 +896,7 @@ class _RowDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(height: 1, indent: 16, endIndent: 16,
+    return Divider(height: 1, indent: 16, endIndent: 16,
         color: AppTheme.divider);
   }
 }

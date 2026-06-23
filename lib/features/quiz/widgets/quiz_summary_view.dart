@@ -237,21 +237,21 @@ class _QuizSummaryViewState extends State<QuizSummaryView>
             icon: Icons.check_circle_rounded,
             title: 'Reward Claimed!',
             message: 'Your virtual coins have been added to your Portfolio balance.',
-            color: AppTheme.positive,
+            color: Color(0xFF10B981), // inline constant for positive color
           )
         else if (quiz.rewardAlreadyClaimed || isCompleted)
           const _ClaimStatusPanel(
             icon: Icons.event_busy_rounded,
             title: 'Reward already claimed',
             message: 'You have already collected the module reward. You can keep practicing to test your knowledge!',
-            color: AppTheme.textSecondary,
+            color: Color(0xFF6B7280), // inline constant for textSecondary color
           )
         else if (reward <= 0)
           const _ClaimStatusPanel(
             icon: Icons.info_rounded,
             title: 'No correct answers',
             message: 'Get at least one question right to claim your reward coins.',
-            color: AppTheme.textSecondary,
+            color: Color(0xFF6B7280), // inline constant for textSecondary color
           ),
         if (reward > 0 &&
             !quiz.rewardClaimed &&
@@ -309,7 +309,7 @@ class _QuizSummaryViewState extends State<QuizSummaryView>
                 : () => context.read<QuizProvider>().startQuiz(topic: sessionId, alreadyClaimed: isCompleted),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.primary,
-              side: const BorderSide(color: AppTheme.primary),
+              side: BorderSide(color: AppTheme.primary),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
