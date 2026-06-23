@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
@@ -40,6 +43,20 @@ void main() async {
     publishableKey: dotenv.env['SUPABASE_KEY'] ?? '',
   );
 
+  // ── Crashlytics Setup ──────────────────────────────────────────
+  // Force-enable in debug/emulator so we can verify the setup immediately
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+
+  // Catch all Flutter framework errors (widget tree, rendering, layout, etc.)
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Catch errors from the platform/async layer outside the Flutter framework
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+  // ──────────────────────────────────────────────────────────────
+
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
@@ -51,19 +68,25 @@ void main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => NavProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => MarketProvider()),
-        ChangeNotifierProvider(create: (_) => PortfolioProvider()),
-        ChangeNotifierProvider(create: (_) => QuizProvider()),
-        ChangeNotifierProvider(create: (_) => WatchlistProvider()),
-        ChangeNotifierProvider(create: (_) => AiMentorProvider()),
-      ],
-      child: const FintellApp(),
+
+  // Wrap runApp in runZonedGuarded to catch all zone-level async errors
+  runZonedGuarded(
+    () => runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => NavProvider()),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => MarketProvider()),
+          ChangeNotifierProvider(create: (_) => PortfolioProvider()),
+          ChangeNotifierProvider(create: (_) => QuizProvider()),
+          ChangeNotifierProvider(create: (_) => WatchlistProvider()),
+          ChangeNotifierProvider(create: (_) => AiMentorProvider()),
+        ],
+        child: const FintellApp(),
+      ),
     ),
+    (error, stack) =>
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true),
   );
 }
 
