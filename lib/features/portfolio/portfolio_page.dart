@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+// import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../core/services/currency_service.dart';
@@ -107,7 +107,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
             _TransactionHistorySection(showIdr: _showIdr, rate: rate),
             const SizedBox(height: 24),
             // ── DEV ONLY: Crashlytics Test — Remove before production ──
-            _CrashTestButton(),
+            // _CrashTestButton(),
             // ──────────────────────────────────────────────────────────
             const SizedBox(height: 24),
           ],
@@ -1147,6 +1147,7 @@ class _TransactionRow extends StatelessWidget {
 // ── DEV ONLY: Firebase Crashlytics Test Widget ────────────────────────────────
 // Remove _CrashTestButton() from portfolio_page.dart build() before production.
 
+/*
 class _CrashTestButton extends StatelessWidget {
   const _CrashTestButton();
 
@@ -1242,3 +1243,4 @@ class _CrashTestButton extends StatelessWidget {
     );
   }
 }
+*/
