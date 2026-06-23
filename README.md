@@ -1,22 +1,25 @@
 # Fintell — Financial Intelligence
 
-A financial literacy mobile application built with Flutter. Fintell helps users learn about stock investing through a simulated portfolio, savings goal tracker, and an AI-powered financial mentor.
+A financial literacy mobile application built with Flutter. Fintell helps users learn about stock investing through a simulated portfolio, live market data, an AI-powered financial mentor, and interactive quizzes.
 
 ---
 
 ## Overview
 
-Fintell is designed to lower the barrier to financial literacy for young adults. Instead of real money or live market data, users interact with a virtual environment that teaches the fundamentals of investing: reading stock metrics, building a portfolio, tracking savings goals, and asking questions to an AI mentor.
+Fintell is designed to lower the barrier to financial literacy for young adults. Users authenticate with Firebase, then interact with a feature-rich environment: reading real-time stock metrics, building a virtual portfolio tracked in Firestore, managing a watchlist, and testing their knowledge with gamified quizzes — all guided by a real AI mentor powered by Groq.
 
 ### Core Features
 
 | Feature | Description |
 |---|---|
-| **Market** | Browse popular US stocks with live-style data — price, daily change, PE Ratio, and ROE |
-| **Portfolio** | View your virtual balance, performance chart, and holdings with unrealized gain/loss |
-| **Watchlist** | Save and monitor stocks by sector (Technology, Finance, Healthcare) |
-| **Goals** | Track real-world savings targets with visual progress bars |
-| **AI Mentor** | Chat interface for asking financial questions to the Fintell AI |
+| **Onboarding** | Multi-step onboarding flow shown to new/unauthenticated users |
+| **Auth** | Sign in / Sign up with Firebase Authentication (email & password) |
+| **Market** | Live-style stock data from Supabase — price, daily change, PE Ratio, ROE, volume |
+| **Stock Detail** | Full stock deep-dive: chart, metrics, news, and buy/sell actions |
+| **Portfolio** | Virtual balance, performance chart, holdings with unrealized gain/loss, transaction history |
+| **Watchlist** | Save and monitor stocks by sector; backed by Firestore |
+| **AI Mentor** | Real chat interface powered by Groq LLM — ask any financial question |
+| **Quiz** | Gamified finance quizzes with modules, scoring, explanations, and a summary screen |
 
 ---
 
@@ -27,8 +30,14 @@ Fintell is designed to lower the barrier to financial literacy for young adults.
 | Framework | Flutter 3.x (Material 3) |
 | Language | Dart 3.x |
 | State Management | Provider 6.x |
+| Authentication | Firebase Auth |
+| Cloud Database | Cloud Firestore |
+| Storage (Images) | Supabase Storage |
+| Market Data | Supabase (stock data) |
+| AI Mentor | Groq API (via `http`) |
+| Notifications | `flutter_local_notifications` |
 | Font | Inter (via `google_fonts`) |
-| Data | Static dummy data (no backend) |
+| Environment | `flutter_dotenv` |
 
 ---
 
@@ -36,49 +45,91 @@ Fintell is designed to lower the barrier to financial literacy for young adults.
 
 ```
 lib/
-├── main.dart                          # App entry point, theme, shell navigation
+├── main.dart                              # App entry, providers, routing, shell navigation
+├── firebase_options.dart                  # Auto-generated Firebase config
 │
 ├── core/
 │   ├── theme/
-│   │   └── app_theme.dart             # Global ThemeData (green/white, Inter font)
-│   └── dummy_data/
-│       └── app_data.dart              # All static data: stocks, goals, chat history
+│   │   └── app_theme.dart                 # Global ThemeData (green/white, Inter font)
+│   ├── dummy_data/
+│   │   ├── app_data.dart                  # Static fallback data (stocks, goals, chat)
+│   │   └── quiz_data.dart                 # All quiz questions & modules (static)
+│   ├── models/
+│   │   ├── chat_session.dart              # ChatSession & ChatMessage models
+│   │   ├── quiz_models.dart               # Quiz domain models (Module, Question, etc.)
+│   │   └── quiz_models_flutter_ext.dart   # Flutter extensions on quiz models
+│   └── services/
+│       ├── ai_mentor_service.dart         # Groq API integration for AI chat
+│       ├── currency_service.dart          # IDR/USD conversion helpers
+│       ├── market_service.dart            # Supabase stock data fetching
+│       ├── notification_service.dart      # Local notification scheduling
+│       ├── quiz_service.dart              # Quiz session management
+│       └── storage_service.dart          # Supabase Storage (profile images)
 │
 ├── shared/
 │   └── providers/
-│       └── nav_provider.dart          # ChangeNotifier for bottom navigation state
+│       ├── auth_provider.dart             # Firebase Auth state & user profile
+│       ├── ai_mentor_provider.dart        # AI Mentor chat state
+│       ├── market_provider.dart           # Stock list & search state
+│       ├── nav_provider.dart              # Bottom navigation index state
+│       ├── portfolio_provider.dart        # Portfolio, holdings & transactions
+│       ├── quiz_provider.dart             # Quiz session & scoring state
+│       └── watchlist_provider.dart        # Watchlist CRUD (Firestore-backed)
 │
 └── features/
+    ├── auth/
+    │   ├── auth_page.dart                 # Sign in / Sign up UI
+    │   └── auth_service.dart              # Firebase Auth helper
+    ├── splash/
+    │   └── onboarding_page.dart           # Multi-step onboarding for new users
     ├── market/
-    │   └── market_page.dart           # Market index cards + stock list with metrics
+    │   ├── market_page.dart               # Market index cards + stock list
+    │   └── stock_detail_page.dart         # Full stock detail (chart, metrics, buy/sell)
     ├── portfolio/
-    │   └── portfolio_page.dart        # Balance card, line chart, holdings list
+    │   ├── portfolio_page.dart            # Balance card, chart, holdings list
+    │   └── transaction_detail_page.dart   # Individual transaction detail
     ├── watchlist/
-    │   └── watchlist_page.dart        # TabBar with stock tiles per sector
-    ├── goals/
-    │   └── goals_page.dart            # Savings goal cards with progress bars
-    └── ai_mentor/
-        └── ai_mentor_page.dart        # Chat UI with typing indicator
+    │   └── watchlist_page.dart            # Tabbed watchlist by sector (Firestore)
+    ├── ai_mentor/
+    │   └── ai_mentor_page.dart            # Real AI chat UI (Groq-powered)
+    └── quiz/
+        ├── quiz_page.dart                 # Quiz entry point / module selector
+        └── widgets/
+            ├── quiz_modules_hub.dart      # Module grid with progress indicators
+            ├── question_view.dart         # Active question UI
+            ├── answer_option.dart         # Individual answer option widget
+            ├── explanation_panel.dart     # Post-answer explanation panel
+            ├── quiz_summary_view.dart     # End-of-quiz summary & score
+            └── error_banner.dart          # Error state widget
 ```
 
 ---
 
 ## Screens
 
+### Onboarding
+A multi-step onboarding flow displayed to first-time or unauthenticated users, introducing the app's key features before prompting sign-up.
+
+### Auth
+Clean sign in and sign up screens backed by Firebase Authentication. Handles email/password flows with error feedback.
+
 ### Market
-Displays a personalized greeting, a horizontal scroll of market index cards (S&P 500, NASDAQ, DOW), a search bar, and a scrollable list of 10 popular US stocks. Each stock tile shows the ticker, company name, current price, daily percentage change, PE Ratio, and ROE.
+Displays market index cards, a search bar, and a scrollable list of stocks fetched from Supabase. Each tile shows ticker, name, price, daily change badge, PE Ratio, and ROE.
+
+### Stock Detail
+A full-screen deep-dive for any selected stock — includes a price chart, fundamental metrics, recent news, and buy/sell actions that update the user's virtual portfolio in Firestore.
 
 ### Portfolio
-Shows the user's virtual portfolio. A green gradient card at the top displays the total virtual balance ($52,450), total amount invested, and total return. Below it, a custom-painted line chart visualizes performance. A holdings list shows each owned stock with shares, average buy price, current value, and unrealized gain/loss.
+Shows the user's virtual portfolio sourced from Firestore. A gradient card at the top displays total balance, total invested, and total return. Below it, a performance line chart and a holdings list show each owned stock with shares, avg buy price, current value, and unrealized gain/loss. Tapping a holding opens the transaction detail view.
 
 ### Watchlist
-A tab-based view with three sector categories: Technology, Finance, and Healthcare. Each tab contains stock tiles with price, daily change badge, and fundamental metric tags (PE, ROE, sector).
-
-### Goals
-An overview banner shows total savings progress across all goals. Below it, individual goal cards show an icon, title, deadline, saved vs target amounts, a color-coded linear progress bar, and a "Done!" badge for completed goals.
+A Firestore-backed, tabbed view across sector categories (Technology, Finance, Healthcare, etc.). Users can add/remove stocks, with state persisted to the cloud.
 
 ### AI Mentor
-A modern chat interface styled like a messaging app. Pre-loaded with a sample conversation covering PE Ratio, ROE, and stock analysis. Users can type new questions or tap suggested question chips. The bot responds with a canned reply and an animated three-dot typing indicator.
+A modern real-time chat interface powered by the Groq LLM API. Users can ask any financial question and receive intelligent, contextual responses. Features a typing indicator and conversation history.
+
+### Quiz
+A gamified quiz hub showing finance learning modules (Stocks, Bonds, Crypto, etc.). Each module has a set of questions with multiple-choice answers, post-answer explanations, and a summary screen with score and badges.
 
 ---
 
@@ -89,6 +140,19 @@ A modern chat interface styled like a messaging app. Pre-loaded with a sample co
 - Flutter SDK `>=3.0.0`
 - Dart SDK `>=3.0.0`
 - Android Studio / VS Code with Flutter extension
+- A Firebase project with Authentication and Firestore enabled
+- A Supabase project (for stock data and image storage)
+- A Groq API key
+
+### Environment Setup
+
+Create a `.env` file in the project root (it is loaded via `flutter_dotenv` and declared as an asset in `pubspec.yaml`):
+
+```env
+GROQ_API_KEY=your_groq_api_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+```
 
 ### Run the App
 
@@ -108,17 +172,22 @@ flutter analyze
 
 ---
 
-## Data Model
+## Key Dependencies
 
-All data lives in `lib/core/dummy_data/app_data.dart`. Key classes:
-
-| Class | Fields |
-|---|---|
-| `Stock` | ticker, name, price, changePercent, peRatio, roe, sector, color |
-| `OwnedStock` | wraps `Stock` + shares + avgPrice; computes gain/loss automatically |
-| `Goal` | title, subtitle, target, current, icon, color, deadline; computes progress (0.0–1.0) |
-| `ChatMessage` | text, isUser flag, timestamp string |
-| `MarketIndex` | name, value, changePercent |
+| Package | Version | Purpose |
+|---|---|---|
+| `provider` | ^6.1.2 | State management |
+| `firebase_core` | ^3.13.0 | Firebase initialization |
+| `firebase_auth` | ^5.5.4 | User authentication |
+| `cloud_firestore` | ^5.6.12 | Portfolio & watchlist persistence |
+| `supabase_flutter` | ^2.15.0 | Market data & image storage |
+| `google_fonts` | ^6.2.1 | Inter font |
+| `http` | ^1.2.2 | Groq API calls |
+| `flutter_dotenv` | ^5.2.1 | Environment variable loading |
+| `flutter_local_notifications` | ^22.0.1 | Goal milestone notifications |
+| `permission_handler` | ^12.0.3 | Notification permissions |
+| `image_picker` | ^1.2.2 | Profile photo selection |
+| `confetti` | ^0.8.0 | Quiz celebration animations |
 
 ---
 
@@ -126,83 +195,6 @@ All data lives in `lib/core/dummy_data/app_data.dart`. Key classes:
 
 ```mermaid
 classDiagram
-    %% ── Data Models ──────────────────────────────────
-    class Stock {
-        +String ticker
-        +String name
-        +double price
-        +double changePercent
-        +double peRatio
-        +double roe
-        +String sector
-        +Color color
-    }
-
-    class OwnedStock {
-        +Stock stock
-        +int shares
-        +double avgPrice
-        +double currentValue
-        +double costBasis
-        +double gainLoss
-        +double gainLossPercent
-    }
-
-    class Goal {
-        +String title
-        +String subtitle
-        +double target
-        +double current
-        +IconData icon
-        +Color color
-        +String deadline
-        +double progress
-    }
-
-    class ChatMessage {
-        +String text
-        +bool isUser
-        +String time
-    }
-
-    class MarketIndex {
-        +String name
-        +double value
-        +double changePercent
-    }
-
-    %% ── Data Container ───────────────────────────────
-    class AppData {
-        <<static>>
-        +double virtualBalance$
-        +double totalInvested$
-        +double portfolioReturn$
-        +double portfolioReturnPercent$
-        +List~MarketIndex~ indices$
-        +List~Stock~ popularStocks$
-        +List~Stock~ watchlistTech$
-        +List~Stock~ watchlistFinance$
-        +List~Stock~ watchlistHealth$
-        +List~Goal~ goals$
-        +List~ChatMessage~ chatHistory$
-        +List~OwnedStock~ ownedStocks$
-    }
-
-    %% ── Theme ────────────────────────────────────────
-    class AppTheme {
-        <<static>>
-        +Color primary$
-        +Color primaryDark$
-        +Color primaryLight$
-        +Color background$
-        +Color surface$
-        +Color textPrimary$
-        +Color textSecondary$
-        +Color positive$
-        +Color negative$
-        +ThemeData light$
-    }
-
     %% ── State Management ─────────────────────────────
     class ChangeNotifier {
         <<Flutter>>
@@ -215,11 +207,64 @@ classDiagram
         +setIndex(int index)
     }
 
+    class AuthProvider {
+        +User? user
+        +signIn()
+        +signUp()
+        +signOut()
+    }
+
+    class MarketProvider {
+        +List~Stock~ stocks
+        +String query
+        +fetchStocks()
+        +search(String q)
+    }
+
+    class PortfolioProvider {
+        +double virtualBalance
+        +List~OwnedStock~ holdings
+        +List~Transaction~ transactions
+        +buy(Stock, int)
+        +sell(Stock, int)
+    }
+
+    class WatchlistProvider {
+        +List~Stock~ watchlist
+        +addStock(Stock)
+        +removeStock(Stock)
+    }
+
+    class AiMentorProvider {
+        +List~ChatMessage~ messages
+        +bool isLoading
+        +sendMessage(String)
+    }
+
+    class QuizProvider {
+        +QuizModule? activeModule
+        +int score
+        +bool isFinished
+        +startSession(QuizModule)
+        +submitAnswer(int)
+    }
+
     NavProvider --|> ChangeNotifier
+    AuthProvider --|> ChangeNotifier
+    MarketProvider --|> ChangeNotifier
+    PortfolioProvider --|> ChangeNotifier
+    WatchlistProvider --|> ChangeNotifier
+    AiMentorProvider --|> ChangeNotifier
+    QuizProvider --|> ChangeNotifier
 
     %% ── UI Widgets ───────────────────────────────────
     class FintellApp {
         <<StatelessWidget>>
+        +Widget build()
+    }
+
+    class SplashWrapper {
+        <<StatefulWidget>>
         +Widget build()
     }
 
@@ -230,69 +275,54 @@ classDiagram
 
     class MarketPage {
         <<StatelessWidget>>
-        +Widget build()
+    }
+
+    class StockDetailPage {
+        <<StatefulWidget>>
     }
 
     class PortfolioPage {
-        <<StatelessWidget>>
-        +Widget build()
+        <<StatefulWidget>>
     }
 
     class WatchlistPage {
         <<StatefulWidget>>
-        -TabController _tabController
-        +Widget build()
-        +void initState()
-        +void dispose()
-    }
-
-    class GoalsPage {
-        <<StatelessWidget>>
-        +Widget build()
     }
 
     class AiMentorPage {
         <<StatefulWidget>>
-        -TextEditingController _controller
-        -ScrollController _scrollController
-        -List~ChatMessage~ _messages
-        -bool _isBotTyping
-        +void sendMessage()
-        +void scrollToBottom()
-        +Widget build()
-        +void dispose()
     }
 
-    %% ── Model Relationships ──────────────────────────
-    OwnedStock "1" *-- "1" Stock : composes
+    class QuizPage {
+        <<StatefulWidget>>
+    }
 
-    AppData ..> Stock       : contains
-    AppData ..> OwnedStock  : contains
-    AppData ..> Goal        : contains
-    AppData ..> ChatMessage : contains
-    AppData ..> MarketIndex : contains
+    class OnboardingPage {
+        <<StatefulWidget>>
+    }
+
+    class AuthPage {
+        <<StatefulWidget>>
+    }
 
     %% ── App Relationships ────────────────────────────
-    FintellApp *-- MainShell : hosts
+    FintellApp *-- SplashWrapper : hosts
+    SplashWrapper *-- OnboardingPage : unauthenticated
+    SplashWrapper *-- AuthPage : unauthenticated
+    SplashWrapper *-- MainShell : authenticated
 
-    MainShell ..> NavProvider   : watches
+    MainShell ..|> NavProvider : watches
     MainShell *-- MarketPage    : page 0
     MainShell *-- PortfolioPage : page 1
-    MainShell *-- WatchlistPage : page 2
-    MainShell *-- GoalsPage     : page 3
-    MainShell *-- AiMentorPage  : page 4
+    MainShell *-- AiMentorPage  : page 2
+    MainShell *-- WatchlistPage : page 3
+    MainShell *-- QuizPage      : page 4
 
-    MarketPage    ..> AppData   : reads
-    PortfolioPage ..> AppData   : reads
-    WatchlistPage ..> AppData   : reads
-    GoalsPage     ..> AppData   : reads
-    AiMentorPage  ..> AppData   : reads
-
-    MarketPage    ..> AppTheme  : styles
-    PortfolioPage ..> AppTheme  : styles
-    WatchlistPage ..> AppTheme  : styles
-    GoalsPage     ..> AppTheme  : styles
-    AiMentorPage  ..> AppTheme  : styles
+    MarketPage    ..|> MarketProvider
+    PortfolioPage ..|> PortfolioProvider
+    WatchlistPage ..|> WatchlistProvider
+    AiMentorPage  ..|> AiMentorProvider
+    QuizPage      ..|> QuizProvider
 ```
 
 ---
@@ -311,31 +341,5 @@ classDiagram
 | Positive (green) | `#10B981` |
 | Negative (red) | `#EF4444` |
 | Font | Inter (Google Fonts) |
-
----
-
-## Development Roadmap
-
-### Stage 1 — UI Prototype (Current)
-- [x] Feature-based folder structure
-- [x] Material 3 theme (green/white, Inter font)
-- [x] Bottom navigation with Provider
-- [x] Market page with stock metrics
-- [x] Portfolio page with custom line chart
-- [x] Watchlist with sector tabs
-- [x] Goals with progress tracking
-- [x] AI Mentor chat interface
-
-### Stage 2 — Backend Integration (Planned)
-- [ ] Firebase Authentication
-- [ ] Firestore for portfolio and goals persistence
-- [ ] Live stock price API integration
-- [ ] Real AI responses via LLM API
-
-### Stage 3 — Final Polish (Planned)
-- [ ] Onboarding flow
-- [ ] Push notifications for goal milestones
-- [ ] Dark mode support
-- [ ] Charts with real historical data
 
 ---
