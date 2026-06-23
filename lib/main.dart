@@ -23,6 +23,7 @@ import 'features/watchlist/watchlist_page.dart';
 import 'features/quiz/quiz_page.dart';
 import 'features/ai_mentor/ai_mentor_page.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart' hide User, Provider;
 import 'core/services/notification_service.dart';
 
 void main() async {
@@ -31,6 +32,11 @@ void main() async {
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL'] ?? '',
+    anonKey: dotenv.env['SUPABASE_KEY'] ?? '',
   );
 
   FirebaseFirestore.instance.settings = const Settings(
