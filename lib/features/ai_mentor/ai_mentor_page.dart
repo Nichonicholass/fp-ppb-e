@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
 import '../../core/models/chat_session.dart';
 import '../../shared/providers/ai_mentor_provider.dart';
+import '../../shared/providers/market_provider.dart';
 import '../../shared/providers/portfolio_provider.dart';
 
 class AiMentorPage extends StatefulWidget {
@@ -36,9 +37,17 @@ class _AiMentorPageState extends State<AiMentorPage> {
 
   String _buildPortfolioContext(PortfolioProvider p) {
     if (p.holdings.isEmpty) return '';
-    final holdingsSummary =
-        p.holdings.map((h) => '${h.stock.ticker} x${h.shares}').join(', ');
+    final holdingsSummary = p.holdings.map((h) {
+      final gl = h.gainLossPercent.toStringAsFixed(1);
+      final sign = h.gainLossPercent >= 0 ? '+' : '';
+      return '${h.stock.ticker} x${h.shares} '
+          '(avg \$${h.avgPrice.toStringAsFixed(2)}, '
+          'now \$${h.stock.price.toStringAsFixed(2)}, '
+          '$sign$gl%)';
+    }).join('; ');
     return 'Total portfolio value: \$${p.portfolioValue.toStringAsFixed(2)}, '
+        'Unrealized P&L: \$${p.portfolioReturn.toStringAsFixed(2)} '
+        '(${p.portfolioReturnPercent.toStringAsFixed(1)}%), '
         'Cash balance: \$${p.balance.toStringAsFixed(2)}, '
         'Holdings: $holdingsSummary';
   }
@@ -53,6 +62,14 @@ class _AiMentorPageState extends State<AiMentorPage> {
         );
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Keep AI prompt in sync with market mode (Global vs IDX)
+    final isIDX = context.read<MarketProvider>().isIDX;
+    context.read<AiMentorProvider>().updateMarketMode(isIDX);
   }
 
   @override

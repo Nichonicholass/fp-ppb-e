@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../core/services/market_service.dart';
 import '../../core/services/currency_service.dart';
+import '../../core/services/fundamentals_service.dart';
+import '../../core/services/market_cache_service.dart';
 import '../../core/dummy_data/app_data.dart' show Stock, MarketIndex;
 
 enum MarketMode { luarNegeri, dalamNegeri }
 
 class MarketProvider extends ChangeNotifier {
   final _service = MarketService();
+  final _fundamentalsService = FundamentalsService();
+  final _cacheService = MarketCacheService();
 
   MarketMode _mode = MarketMode.luarNegeri;
   List<Stock> _stocks = [];
   List<MarketIndex> _indices = [];
   bool _isLoading = false;
   String? _error;
+  bool _isFromCache = false;
+  DateTime? _cachedAt;
 
   MarketMode get mode => _mode;
   List<Stock> get stocks => _stocks;
@@ -21,6 +27,8 @@ class MarketProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasData => _stocks.isNotEmpty;
   bool get isIDX => _mode == MarketMode.dalamNegeri;
+  bool get isFromCache => _isFromCache;
+  DateTime? get cachedAt => _cachedAt;
 
   /// Current USD→IDR rate being used (live or fallback)
   double get usdToIdrRate => CurrencyService.currentRate;
@@ -116,10 +124,19 @@ class MarketProvider extends ChangeNotifier {
         ...indexMeta.map((m) => m.symbol),
       ];
 
-      final quotes = await _service.fetchQuotes(allSymbols);
+      // Fetch live quotes and Supabase fundamentals in parallel
+      final results = await Future.wait([
+        _service.fetchQuotes(allSymbols),
+        _fundamentalsService.fetchAll(),
+      ]);
+      final quotes = results[0] as Map<String, QuoteData>;
+      final fundamentals = results[1] as Map<String, StockFundamentals>;
 
       _stocks = stockMeta.map((meta) {
         final q = quotes[meta.symbol];
+        // Prefer live Supabase fundamentals; fall back to hardcoded meta values
+        final fund = fundamentals[meta.symbol] ??
+            fundamentals[meta.symbol.replaceAll('.JK', '')];
         // IDX prices stay in IDR (native) — conversion handled at display/buy time
         return Stock(
           ticker: meta.symbol.replaceAll('.JK', ''),
@@ -127,8 +144,8 @@ class MarketProvider extends ChangeNotifier {
           name: meta.name,
           price: q?.price ?? 0,
           changePercent: q?.changePercent ?? 0,
-          peRatio: meta.peRatio,
-          roe: meta.roe,
+          peRatio: fund?.peRatio ?? meta.peRatio,
+          roe: fund?.roe ?? meta.roe,
           sector: meta.sector,
           color: meta.color,
         );
@@ -142,13 +159,71 @@ class MarketProvider extends ChangeNotifier {
           changePercent: q?.changePercent ?? 0,
         );
       }).toList();
+
+      _isFromCache = false;
+      _cachedAt = null;
+
+      // Persist successful fetch to local cache
+      await _cacheService.save(
+        mode: _mode.name,
+        stocks: _stocks.map(_stockToMap).toList(),
+        indices: _indices.map(_indexToMap).toList(),
+      );
     } catch (e) {
       _error = e.toString();
+
+      // Attempt to serve stale cached data on failure
+      final cached = await _cacheService.load(_mode.name);
+      if (cached != null && _stocks.isEmpty) {
+        _stocks = cached.stocks.map(_stockFromMap).toList();
+        _indices = cached.indices.map(_indexFromMap).toList();
+        _isFromCache = true;
+        _cachedAt = cached.cachedAt;
+        _error = null; // suppress error when we have usable cached data
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
+
+  // ── Cache serialization helpers ──────────────────────────────────────────
+
+  Map<String, dynamic> _stockToMap(Stock s) => {
+        'ticker': s.ticker,
+        'symbol': s.symbol,
+        'name': s.name,
+        'price': s.price,
+        'changePercent': s.changePercent,
+        'peRatio': s.peRatio,
+        'roe': s.roe,
+        'sector': s.sector,
+        'colorValue': s.color.toARGB32(),
+      };
+
+  Stock _stockFromMap(Map<String, dynamic> m) => Stock(
+        ticker: m['ticker'] as String,
+        symbol: m['symbol'] as String,
+        name: m['name'] as String,
+        price: (m['price'] as num).toDouble(),
+        changePercent: (m['changePercent'] as num).toDouble(),
+        peRatio: (m['peRatio'] as num).toDouble(),
+        roe: (m['roe'] as num).toDouble(),
+        sector: m['sector'] as String,
+        color: Color(m['colorValue'] as int),
+      );
+
+  Map<String, dynamic> _indexToMap(MarketIndex idx) => {
+        'name': idx.name,
+        'value': idx.value,
+        'changePercent': idx.changePercent,
+      };
+
+  MarketIndex _indexFromMap(Map<String, dynamic> m) => MarketIndex(
+        name: m['name'] as String,
+        value: (m['value'] as num).toDouble(),
+        changePercent: (m['changePercent'] as num).toDouble(),
+      );
 }
 
 class _SM {

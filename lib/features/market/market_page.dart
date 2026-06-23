@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/dummy_data/app_data.dart';
-import '../../core/services/currency_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/market_provider.dart';
@@ -70,9 +69,14 @@ class _MarketPageState extends State<MarketPage> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(child: _buildHeader(context)),
-              SliverToBoxAdapter(child: _buildMarketOverview(market.indices)),
+              SliverToBoxAdapter(child: _buildMarketOverview(market)),
               SliverToBoxAdapter(child: _buildSearchBar()),
               SliverToBoxAdapter(child: _buildSectionHeader(context, market)),
+              // Stale-data warning banner
+              if (market.isFromCache)
+                SliverToBoxAdapter(
+                  child: _StaleBanner(cachedAt: market.cachedAt),
+                ),
               if (market.isLoading && !market.hasData)
                 const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()),
@@ -332,7 +336,7 @@ class _MarketPageState extends State<MarketPage> {
     );
   }
 
-  Widget _buildMarketOverview(List<MarketIndex> indices) {
+  Widget _buildMarketOverview(MarketProvider market) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 0, 0),
       child: Column(
@@ -349,13 +353,21 @@ class _MarketPageState extends State<MarketPage> {
           const SizedBox(height: 12),
           SizedBox(
             height: 92,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(right: 20),
-              itemCount: indices.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (ctx, i) => _IndexCard(index: indices[i]),
-            ),
+            child: (market.isLoading && market.indices.isEmpty)
+                ? ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(right: 20),
+                    itemCount: 3,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => const _IndexCardSkeleton(),
+                  )
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(right: 20),
+                    itemCount: market.indices.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (ctx, i) => _IndexCard(index: market.indices[i]),
+                  ),
           ),
         ],
       ),
@@ -595,6 +607,70 @@ class _IndexCard extends StatelessWidget {
   }
 }
 
+class _IndexCardSkeleton extends StatefulWidget {
+  const _IndexCardSkeleton();
+  @override
+  State<_IndexCardSkeleton> createState() => _IndexCardSkeletonState();
+}
+
+class _IndexCardSkeletonState extends State<_IndexCardSkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.4, end: 1.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _bar(double w, double h) => Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, child) => Opacity(
+        opacity: _opacity.value,
+        child: Container(
+          width: 148,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _bar(60, 10),
+              _bar(80, 18),
+              _bar(50, 10),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StockListTile extends StatelessWidget {
   final Stock stock;
   final bool isIDX;
@@ -809,3 +885,72 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
+
+class _StaleBanner extends StatelessWidget {
+  final DateTime? cachedAt;
+
+  const _StaleBanner({required this.cachedAt});
+
+  @override
+  Widget build(BuildContext context) {
+    String timeStr = 'beberapa waktu lalu';
+    if (cachedAt != null) {
+      final difference = DateTime.now().difference(cachedAt!);
+      if (difference.inMinutes < 1) {
+        timeStr = 'baru saja';
+      } else if (difference.inMinutes < 60) {
+        timeStr = '${difference.inMinutes} menit yang lalu';
+      } else if (difference.inHours < 24) {
+        timeStr = '${difference.inHours} jam yang lalu';
+      } else {
+        timeStr = '${difference.inDays} hari yang lalu';
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF3C7), // Amber 100
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFCD34D), width: 1), // Amber 300
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            color: Color(0xFFD97706), // Amber 600
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Mode Offline / Data Lama',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF78350F), // Amber 900
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Koneksi internet gagal. Menampilkan data cache ($timeStr).',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF92400E), // Amber 800
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

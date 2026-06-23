@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers/nav_provider.dart';
@@ -23,7 +24,7 @@ import 'features/watchlist/watchlist_page.dart';
 import 'features/quiz/quiz_page.dart';
 import 'features/ai_mentor/ai_mentor_page.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart' hide User, Provider;
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'core/services/notification_service.dart';
 
 void main() async {
@@ -36,7 +37,7 @@ void main() async {
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_KEY'] ?? '',
+    publishableKey: dotenv.env['SUPABASE_KEY'] ?? '',
   );
 
   FirebaseFirestore.instance.settings = const Settings(
@@ -154,14 +155,37 @@ class UnAuthWrapper extends StatefulWidget {
 }
 
 class _UnAuthWrapperState extends State<UnAuthWrapper> {
-  bool _showOnboarding = true;
+  // null = still loading from prefs, true = show onboarding, false = go to auth
+  bool? _showOnboarding;
+
+  static const _prefKey = 'onboarding_seen';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOnboardingFlag();
+  }
+
+  Future<void> _loadOnboardingFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_prefKey) ?? false;
+    if (mounted) setState(() => _showOnboarding = !seen);
+  }
+
+  Future<void> _markOnboardingSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefKey, true);
+    if (mounted) setState(() => _showOnboarding = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_showOnboarding) {
-      return OnboardingPage(
-        onFinish: () => setState(() => _showOnboarding = false),
-      );
+    // While reading from prefs, show a blank scaffold (very brief)
+    if (_showOnboarding == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_showOnboarding!) {
+      return OnboardingPage(onFinish: _markOnboardingSeen);
     }
     return const AuthPage();
   }
