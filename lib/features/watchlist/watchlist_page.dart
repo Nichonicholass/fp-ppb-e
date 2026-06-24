@@ -176,16 +176,20 @@ class _WatchlistPageState extends State<WatchlistPage> {
         title: const Text('Watchlist'),
         actions: [
           IconButton(
-            tooltip: 'Add stock',
+            tooltip: activeList == null ? 'Create a watchlist first' : 'Add stock',
             icon: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight,
+                color: activeList == null
+                    ? AppTheme.primaryLight.withValues(alpha: 0.4)
+                    : AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.add_rounded,
-                color: AppTheme.primary,
+                color: activeList == null
+                    ? AppTheme.primary.withValues(alpha: 0.35)
+                    : AppTheme.primary,
                 size: 18,
               ),
             ),
@@ -258,13 +262,21 @@ class _WatchlistPageState extends State<WatchlistPage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: activeList == null
-          ? const Center(child: CircularProgressIndicator())
+      body: lists.isEmpty
+          ? _NoWatchlistState(
+              onCreateList: () => _showListDialog(
+                title: 'New Watchlist',
+                onSubmit: (name) {
+                  final id = context.read<WatchlistProvider>().createList(name);
+                  _selectList(id);
+                },
+              ),
+            )
           : Column(
               children: [
                 _WatchlistSelector(
                   lists: lists,
-                  activeListId: activeList.id,
+                  activeListId: activeList!.id,
                   onSelected: _selectList,
                 ),
                 _SortFilterBar(
@@ -283,6 +295,79 @@ class _WatchlistPageState extends State<WatchlistPage> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _NoWatchlistState extends StatelessWidget {
+  final VoidCallback onCreateList;
+
+  const _NoWatchlistState({required this.onCreateList});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.bookmark_add_outlined,
+                color: AppTheme.primary,
+                size: 44,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Your watchlist is empty',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Create your first watchlist and start\ntracking your favourite stocks here.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton.icon(
+              onPressed: onCreateList,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(
+                'Create Watchlist',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
