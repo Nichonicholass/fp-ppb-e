@@ -81,12 +81,6 @@ class WatchlistProvider extends ChangeNotifier {
     'Finance',
     'Healthcare',
   ];
-  static const Set<String> _defaultListIds = {
-    'technology',
-    'finance',
-    'healthcare',
-  };
-
   final bool _enablePersistence;
   final bool _fetchPricesOnCreate;
   final _service = MarketService();
@@ -148,8 +142,7 @@ class WatchlistProvider extends ChangeNotifier {
 
   bool canEditList(String listIdOrName) {
     final list = _findList(listIdOrName);
-    if (list == null) return false;
-    return !_defaultListIds.contains(list.id);
+    return list != null;
   }
 
   bool canDeleteList(String listIdOrName) => canEditList(listIdOrName);
@@ -164,7 +157,10 @@ class WatchlistProvider extends ChangeNotifier {
 
   String createList(String name) {
     final cleanName = name.trim();
-    if (cleanName.isEmpty) return _sortedLists().first.id;
+    if (cleanName.isEmpty) {
+      if (_lists.isNotEmpty) return _sortedLists().first.id;
+      return createList('Watchlist');
+    }
 
     final existing = _lists.where(
       (list) => list.name.toLowerCase() == cleanName.toLowerCase(),
@@ -546,42 +542,11 @@ class WatchlistProvider extends ChangeNotifier {
   }
 
   static List<WatchlistGroup> _defaultLists() {
-    return [
-      _defaultList('Technology', 0, AppData.watchlistTech),
-      _defaultList('Finance', 1, AppData.watchlistFinance),
-      _defaultList('Healthcare', 2, AppData.watchlistHealth),
-    ];
-  }
-
-  static WatchlistGroup _defaultList(String name, int sortOrder, List<Stock> stocks) {
-    return WatchlistGroup(
-      id: _slugifyStatic(name),
-      name: name,
-      sortOrder: sortOrder,
-      items: stocks
-          .asMap()
-          .entries
-          .map(
-            (entry) => WatchlistItem(
-              stock: entry.value,
-              addedAt: DateTime.now(),
-              pinned: false,
-              sortOrder: entry.key,
-            ),
-          )
-          .toList(),
-    );
+    return [];
   }
 
   List<WatchlistGroup> _mergeMissingDefaultLists(List<WatchlistGroup> parsed) {
-    final lists = List<WatchlistGroup>.from(parsed);
-    for (final defaultList in _defaultLists()) {
-      final exists = lists.any((list) => list.id == defaultList.id);
-      if (!exists) {
-        lists.add(defaultList.copyWith(sortOrder: _nextListSortOrder(lists)));
-      }
-    }
-    return lists;
+    return List<WatchlistGroup>.from(parsed);
   }
 
   int _ensureList(String listIdOrName) {
