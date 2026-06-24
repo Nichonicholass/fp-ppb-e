@@ -104,6 +104,7 @@ class QuizProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final random = Random();
       final allQuestions = await _service.fetchQuestions();
       final selectedDifficulty = difficulty.trim();
       final filtered = allQuestions.where((q) {
@@ -112,7 +113,7 @@ class QuizProvider extends ChangeNotifier {
             selectedDifficulty.isEmpty || q.difficulty == selectedDifficulty;
         return q.isValid && topicMatches && difficultyMatches;
       }).toList()
-        ..shuffle(Random());
+        ..shuffle(random);
 
       final quizQs = limit > 0 && limit < filtered.length
           ? filtered.sublist(0, limit)
@@ -125,7 +126,9 @@ class QuizProvider extends ChangeNotifier {
       _sessionId = topic ?? 'general';
       _questions
         ..clear()
-        ..addAll(quizQs);
+        ..addAll(
+          quizQs.map((question) => _shuffleQuestionOptions(question, random)),
+        );
     } catch (e) {
       _error = _messageFromError(e);
     } finally {
@@ -239,5 +242,29 @@ class QuizProvider extends ChangeNotifier {
     }
     if (message.isNotEmpty) return message;
     return 'Unable to load quiz. Please try again.';
+  }
+
+  QuizQuestion _shuffleQuestionOptions(QuizQuestion question, Random random) {
+    final indexedOptions = question.options
+        .asMap()
+        .entries
+        .map((entry) => MapEntry(entry.key, entry.value))
+        .toList()
+      ..shuffle(random);
+    final shuffledOptions = indexedOptions.map((entry) => entry.value).toList();
+    final shuffledCorrectIndex = indexedOptions.indexWhere(
+      (entry) => entry.key == question.correctIndex,
+    );
+
+    return QuizQuestion(
+      id: question.id,
+      question: question.question,
+      options: shuffledOptions,
+      correctIndex: shuffledCorrectIndex,
+      explanation: question.explanation,
+      topic: question.topic,
+      difficulty: question.difficulty,
+      active: question.active,
+    );
   }
 }
